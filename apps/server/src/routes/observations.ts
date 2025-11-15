@@ -56,7 +56,10 @@ const plugin: FastifyPluginAsync = async (app) => {
         take: limit,
       })
       .then((rows) => {
-        req.log.info({ stationId, count: rows.length }, "Observations retrieved");
+        req.log.info(
+          { stationId, count: rows.length },
+          "Observations retrieved"
+        );
         return rows.reverse();
       });
   });
