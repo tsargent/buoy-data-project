@@ -83,34 +83,34 @@ Set up the web-demo application package with Vite, TypeScript, and initial proje
 Create TypeScript types matching the API responses and build a reusable HTTP client for making API requests.
 
 **Steps**:
-- [ ] Create `apps/web-demo/src/config.ts` with:
+- [x] Create `apps/web-demo/src/config.ts` with:
   - `API_BASE_URL` from environment or default to `http://localhost:3000`
   - Map configuration (default center, zoom)
   - `REQUEST_TIMEOUT = 15000` (15 seconds)
-- [ ] Create `apps/web-demo/src/types.ts` with interfaces:
+- [x] Create `apps/web-demo/src/types.ts` with interfaces:
   - `Station` matching `/stations` response (including `lastObservationAt?: string`)
   - `Observation` matching `/observations/by-station/:id` response
   - `PaginatedResponse<T>` for API wrapper
   - `ApiError` for error responses
-- [ ] Create `apps/web-demo/src/api/client.ts` with:
+- [x] Create `apps/web-demo/src/api/client.ts` with:
   - `fetchApi<T>()` wrapper around fetch with error handling
   - Request timeout handling (15 seconds with AbortController)
   - JSON parsing with type safety
   - Retry logic (max 3 attempts with exponential backoff)
-- [ ] Create `apps/web-demo/src/api/stations.ts` with:
+- [x] Create `apps/web-demo/src/api/stations.ts` with:
   - `getStations(page?: number, limit?: number): Promise<PaginatedResponse<Station>>`
   - `getStation(id: string): Promise<Station>`
-- [ ] Create `apps/web-demo/src/api/observations.ts` with:
+- [x] Create `apps/web-demo/src/api/observations.ts` with:
   - `getLatestObservation(stationId: string): Promise<Observation | null>`
-- [ ] Add basic error logging to console
-- [ ] Test timeout behavior with delayed API response
+- [x] Add basic error logging to console
+- [x] Test timeout behavior with delayed API response
 
 **Acceptance Criteria**:
-- [ ] TypeScript compiles without type errors
-- [ ] Can fetch stations list in browser console: `getStations()`
-- [ ] API errors are caught and typed correctly
-- [ ] Timeout errors (>15s) are handled gracefully
-- [ ] Retry logic works for transient failures (max 3 attempts)
+- [x] TypeScript compiles without type errors
+- [x] Can fetch stations list in browser console: `getStations()`
+- [x] API errors are caught and typed correctly
+- [x] Timeout errors (>15s) are handled gracefully
+- [x] Retry logic works for transient failures (max 3 attempts)
 
 **Related Requirements**: FR-001, FR-004, FR-010, FR-011
 
