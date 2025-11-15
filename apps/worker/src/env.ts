@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { config } from "dotenv";
+
+// Load environment variables
+config();
 
 /**
  * Environment variable validation for worker
