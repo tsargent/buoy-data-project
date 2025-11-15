@@ -2,6 +2,8 @@ import Fastify from "fastify";
 import type { FastifyError } from "fastify";
 import cors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
+import rateLimit from "@fastify/rate-limit";
+import helmet from "@fastify/helmet";
 import { env } from "./env.js";
 import stations from "./routes/stations.js";
 import observations from "./routes/observations.js";
@@ -15,12 +17,62 @@ import "./types.js"; // Augment FastifyRequest
 
 export async function buildApp() {
   const app = Fastify({
-    logger: true,
+    logger: {
+      level: "info",
+      // Redact sensitive data from logs
+      redact: {
+        paths: [
+          "req.headers.authorization",
+          "req.headers.cookie",
+          "req.headers['x-api-key']",
+        ],
+        remove: true,
+      },
+    },
     // Generate reqId for request tracing
     genReqId: () => crypto.randomUUID(),
   });
-  await app.register(cors, { origin: true });
-  await app.register(fastifyJwt, { secret: env.JWT_SECRET });
+
+  // Security headers
+  await app.register(helmet, {
+    // Allow inline scripts for development (disable in production)
+    contentSecurityPolicy: process.env.NODE_ENV === "production",
+    // Required for /metrics endpoint
+    crossOriginEmbedderPolicy: false,
+  });
+
+  // CORS configuration
+  // TODO: In production, restrict origins to specific domains
+  await app.register(cors, {
+    origin: process.env.NODE_ENV === "production" ? false : true,
+    credentials: true,
+  });
+
+  // JWT configuration with production check
+  const jwtSecret = env.JWT_SECRET;
+  if (process.env.NODE_ENV === "production" && jwtSecret === "dev-secret") {
+    throw new Error(
+      "SECURITY: Cannot use default JWT_SECRET in production. Set a secure value in environment variables."
+    );
+  }
+  await app.register(fastifyJwt, { secret: jwtSecret });
+
+  // Rate limiting: global default + per-route overrides
+  await app.register(rateLimit, {
+    global: true,
+    max: 100, // 100 requests per minute (default)
+    timeWindow: "1 minute",
+    addHeadersOnExceeding: {
+      "x-ratelimit-limit": true,
+      "x-ratelimit-remaining": true,
+      "x-ratelimit-reset": true,
+    },
+    addHeaders: {
+      "x-ratelimit-limit": true,
+      "x-ratelimit-remaining": true,
+      "x-ratelimit-reset": true,
+    },
+  });
 
   // Metrics middleware - track request count and duration
   app.addHook("onRequest", async (request) => {
@@ -82,12 +134,15 @@ export async function buildApp() {
     return reply.code(error.statusCode || 500).send(errorResponse);
   });
 
-  // Metrics endpoint
+  // Metrics endpoint (no versioning)
   app.get("/metrics", async () => register.metrics());
 
+  // Health check (no versioning)
   app.get("/health", () => ({ status: "ok" }));
-  await app.register(stations, { prefix: "/stations" });
-  await app.register(observations, { prefix: "/observations" });
+
+  // API v1 routes
+  await app.register(stations, { prefix: "/v1/stations" });
+  await app.register(observations, { prefix: "/v1/observations" });
 
   return app;
 }

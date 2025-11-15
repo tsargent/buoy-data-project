@@ -22,7 +22,7 @@ const plugin: FastifyPluginAsync = async (app) => {
       const error = createError(
         ErrorCode.VALIDATION_ERROR,
         "Invalid pagination parameters",
-        parseResult.error.format()
+        parseResult.error.format(),
       );
       return reply
         .code(getStatusForErrorCode(ErrorCode.VALIDATION_ERROR))
@@ -60,7 +60,7 @@ const plugin: FastifyPluginAsync = async (app) => {
       const error = createError(
         ErrorCode.VALIDATION_ERROR,
         "Invalid station ID",
-        parseResult.error.format()
+        parseResult.error.format(),
       );
       return reply
         .code(getStatusForErrorCode(ErrorCode.VALIDATION_ERROR))

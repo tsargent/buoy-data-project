@@ -6,14 +6,14 @@ This document describes the logging patterns and standards for the buoy-sonifica
 
 Fastify uses [pino](https://getpino.io/) with the following standard levels:
 
-| Level | Numeric | Usage                                                    |
-| ----- | ------- | -------------------------------------------------------- |
-| fatal | 60      | Application cannot continue (immediate ops alert)        |
-| error | 50      | Error conditions that affect operations (must review)    |
-| warn  | 40      | Warning conditions (degraded but functional)             |
-| info  | 30      | General informational messages (default in production)   |
-| debug | 20      | Debugging information (development only)                 |
-| trace | 10      | Very detailed traces (development only)                  |
+| Level | Numeric | Usage                                                  |
+| ----- | ------- | ------------------------------------------------------ |
+| fatal | 60      | Application cannot continue (immediate ops alert)      |
+| error | 50      | Error conditions that affect operations (must review)  |
+| warn  | 40      | Warning conditions (degraded but functional)           |
+| info  | 30      | General informational messages (default in production) |
+| debug | 20      | Debugging information (development only)               |
+| trace | 10      | Very detailed traces (development only)                |
 
 ## Default Context
 
@@ -30,13 +30,16 @@ Use the `request.log` object with additional context:
 
 ```typescript
 // Log with domain context
-request.log.info({ stationId, limit }, 'Fetching observations');
+request.log.info({ stationId, limit }, "Fetching observations");
 
 // Log business events
-request.log.info({ stationId: '44009', count: 142 }, 'Station observations retrieved');
+request.log.info(
+  { stationId: "44009", count: 142 },
+  "Station observations retrieved",
+);
 
 // Log with error context
-request.log.error({ err, stationId }, 'Failed to fetch station data');
+request.log.error({ err, stationId }, "Failed to fetch station data");
 ```
 
 ## Route Entry/Exit Patterns
@@ -48,9 +51,9 @@ Fastify automatically logs request entry (`incoming request`) and exit (`request
 app.get("/by-station/:stationId", (req, reply) => {
   const { stationId } = req.params;
   req.log.info({ stationId }, "Processing observation query");
-  
+
   // ... route logic
-  
+
   // Fastify will automatically log completion with status + timing
 });
 ```
@@ -69,7 +72,7 @@ Use Pino's `redact` option for automatic scrubbing:
 ```typescript
 const app = Fastify({
   logger: {
-    redact: ['req.headers.authorization', 'req.body.password'],
+    redact: ["req.headers.authorization", "req.body.password"],
   },
 });
 ```
@@ -111,13 +114,19 @@ Log significant business events at `info` level:
 
 ```typescript
 // Worker ingestion events
-log.info({ stationId, recordCount: 1420, durationMs: 342 }, 'NDBC data ingested');
+log.info(
+  { stationId, recordCount: 1420, durationMs: 342 },
+  "NDBC data ingested",
+);
 
 // Sonification generation
-log.info({ stationId, eventCount: 50, algorithm: 'wave-to-freq' }, 'Sonification events generated');
+log.info(
+  { stationId, eventCount: 50, algorithm: "wave-to-freq" },
+  "Sonification events generated",
+);
 
 // Configuration changes
-log.info({ previousLimit: 100, newLimit: 500 }, 'Query limit increased');
+log.info({ previousLimit: 100, newLimit: 500 }, "Query limit increased");
 ```
 
 ## Performance Tracing
@@ -128,7 +137,7 @@ Fastify logs `responseTime` automatically. For internal operations, use:
 const start = process.hrtime.bigint();
 // ... operation
 const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
-request.log.info({ durationMs, recordCount }, 'Data processing completed');
+request.log.info({ durationMs, recordCount }, "Data processing completed");
 ```
 
 ## Production Configuration
@@ -138,8 +147,8 @@ In production, configure minimal logs:
 ```typescript
 const app = Fastify({
   logger: {
-    level: 'info', // Only info and above
-    redact: ['req.headers.authorization'], // Remove sensitive headers
+    level: "info", // Only info and above
+    redact: ["req.headers.authorization"], // Remove sensitive headers
   },
 });
 ```
@@ -151,9 +160,9 @@ Use verbose logging in development:
 ```typescript
 const app = Fastify({
   logger: {
-    level: 'debug',
+    level: "debug",
     transport: {
-      target: 'pino-pretty', // Human-readable formatting
+      target: "pino-pretty", // Human-readable formatting
       options: { colorize: true },
     },
   },
@@ -169,15 +178,18 @@ prisma.$use(async (params, next) => {
   const start = Date.now();
   const result = await next(params);
   const duration = Date.now() - start;
-  
+
   if (duration > 100) {
-    log.warn({ 
-      model: params.model, 
-      action: params.action, 
-      duration 
-    }, 'Slow query detected');
+    log.warn(
+      {
+        model: params.model,
+        action: params.action,
+        duration,
+      },
+      "Slow query detected",
+    );
   }
-  
+
   return result;
 });
 ```
@@ -194,7 +206,9 @@ const app = Fastify({ logger: false });
 const stream = new Writable();
 const app = Fastify({ logger: { stream } });
 // ... perform test
-expect(stream.logs).toContainEqual(expect.objectContaining({ level: 30, msg: 'Expected log' }));
+expect(stream.logs).toContainEqual(
+  expect.objectContaining({ level: 30, msg: "Expected log" }),
+);
 ```
 
 ## References

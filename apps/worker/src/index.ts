@@ -44,14 +44,14 @@ const worker = new Worker(
       const observations = parseNDBCFile(rawData);
 
       void job.log(
-        `Parsed ${observations.length} observations for ${stationId}`
+        `Parsed ${observations.length} observations for ${stationId}`,
       );
 
       // Persist to database (upsert to avoid duplicates)
       let inserted = 0;
       for (const obs of observations) {
         const observedAt = new Date(
-          Date.UTC(obs.year, obs.month - 1, obs.day, obs.hour, obs.minute)
+          Date.UTC(obs.year, obs.month - 1, obs.day, obs.hour, obs.minute),
         );
 
         try {
@@ -84,13 +84,13 @@ const worker = new Worker(
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           void job.log(
-            `Skipping duplicate or invalid observation: ${errorMsg}`
+            `Skipping duplicate or invalid observation: ${errorMsg}`,
           );
         }
       }
 
       void job.log(
-        `✅ Ingested ${inserted}/${observations.length} observations for ${stationId}`
+        `✅ Ingested ${inserted}/${observations.length} observations for ${stationId}`,
       );
       return { stationId, inserted, total: observations.length };
     } catch (error) {
@@ -99,7 +99,7 @@ const worker = new Worker(
       throw error;
     }
   },
-  { connection }
+  { connection },
 );
 
 worker.on("completed", (job) => {
@@ -129,7 +129,7 @@ async function scheduleIngestion() {
         jobId: `ingest-${station.id}`,
         removeOnComplete: 100,
         removeOnFail: 50,
-      }
+      },
     );
   }
 
@@ -146,5 +146,5 @@ setInterval(() => {
 }, env.INGEST_INTERVAL_MS);
 
 console.log(
-  `✅ Worker running (ingestion interval: ${env.INGEST_INTERVAL_MS}ms)`
+  `✅ Worker running (ingestion interval: ${env.INGEST_INTERVAL_MS}ms)`,
 );

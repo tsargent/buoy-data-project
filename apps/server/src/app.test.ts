@@ -33,11 +33,11 @@ describe("API Routes Integration Tests", () => {
     });
   });
 
-  describe("GET /stations", () => {
+  describe("GET /v1/stations", () => {
     it("should return paginated response with data and meta", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/stations",
+        url: "/v1/stations",
       });
 
       // Accept 200 (if DB available) or 500 (if DB unavailable in test)
@@ -70,7 +70,7 @@ describe("API Routes Integration Tests", () => {
     it("should accept page and limit query parameters", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/stations?page=2&limit=50",
+        url: "/v1/stations?page=2&limit=50",
       });
 
       expect([200, 500]).toContain(response.statusCode);
@@ -85,11 +85,11 @@ describe("API Routes Integration Tests", () => {
     });
   });
 
-  describe("GET /stations/:id", () => {
+  describe("GET /v1/stations/:id", () => {
     it("should return 404 or 500 with error shape for non-existent station", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/stations/nonexistent",
+        url: "/v1/stations/nonexistent",
       });
 
       expect([404, 500]).toContain(response.statusCode);
@@ -102,11 +102,11 @@ describe("API Routes Integration Tests", () => {
     });
   });
 
-  describe("GET /observations/by-station/:stationId", () => {
+  describe("GET /v1/observations/by-station/:stationId", () => {
     it("should return paginated response with data and meta", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/observations/by-station/test-station",
+        url: "/v1/observations/by-station/test-station",
       });
 
       expect([200, 500]).toContain(response.statusCode);
@@ -131,7 +131,7 @@ describe("API Routes Integration Tests", () => {
     it("should accept page and limit query parameters", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/observations/by-station/test-station?page=2&limit=50",
+        url: "/v1/observations/by-station/test-station?page=2&limit=50",
       });
 
       expect([200, 500]).toContain(response.statusCode);
@@ -148,7 +148,7 @@ describe("API Routes Integration Tests", () => {
     it("should accept since query parameter", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/observations/by-station/test-station?since=2025-11-14T00:00:00Z",
+        url: "/v1/observations/by-station/test-station?since=2025-11-14T00:00:00Z",
       });
 
       expect([200, 500]).toContain(response.statusCode);
@@ -157,7 +157,7 @@ describe("API Routes Integration Tests", () => {
     it("should enforce max limit of 500", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/observations/by-station/test-station?limit=1000",
+        url: "/v1/observations/by-station/test-station?limit=1000",
       });
 
       expect([200, 500]).toContain(response.statusCode);
@@ -171,7 +171,7 @@ describe("API Routes Integration Tests", () => {
     it("should reject invalid limit parameter", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/observations/by-station/test-station?limit=notanumber",
+        url: "/v1/observations/by-station/test-station?limit=notanumber",
       });
 
       // Should fail validation
@@ -183,7 +183,7 @@ describe("API Routes Integration Tests", () => {
     it("should reject invalid since parameter", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/observations/by-station/test-station?since=invalid-date",
+        url: "/v1/observations/by-station/test-station?since=invalid-date",
       });
 
       expect(response.statusCode).toBe(400);

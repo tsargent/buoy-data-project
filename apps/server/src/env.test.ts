@@ -20,7 +20,7 @@ describe("env validation schema", () => {
 
     expect(result.PORT).toBe(4000);
     expect(result.DATABASE_URL).toBe(
-      "postgresql://test:test@localhost:5432/test"
+      "postgresql://test:test@localhost:5432/test",
     );
     expect(result.JWT_SECRET).toBe("test-secret");
   });

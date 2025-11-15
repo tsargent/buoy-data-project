@@ -40,7 +40,7 @@ export const ObservationQuerySchema = z
         },
         {
           message: "since must be a valid ISO 8601 date string",
-        }
+        },
       ),
   })
   .merge(PaginationQuerySchema);

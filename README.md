@@ -11,7 +11,7 @@ This is a TypeScript monorepo using pnpm workspaces:
 ```text
 apps/
   server/     - Fastify REST API
-  worker/     - BullMQ background job processor  
+  worker/     - BullMQ background job processor
   web-demo/   - (Future) Web audio client demo
 
 packages/
@@ -130,13 +130,17 @@ pnpm -F @app/server test
 
 ## 🔌 API Endpoints
 
+**Base URL**: `http://localhost:3000`  
+**API Version**: All API endpoints are versioned under `/v1`
+
 ### Health
 
-- `GET /health` - Service health check
+- `GET /health` - Service health check (no versioning)
+- `GET /metrics` - Prometheus metrics endpoint (no versioning)
 
 ### Stations
 
-- `GET /stations` - List all active stations
+- `GET /v1/stations` - List all active stations
   - Query params:
     - `page` (optional): Page number, default 1
     - `limit` (optional): Results per page, default 100, max 500
@@ -153,11 +157,11 @@ pnpm -F @app/server test
     }
     ```
 
-- `GET /stations/:id` - Get station by ID
+- `GET /v1/stations/:id` - Get station by ID
 
 ### Observations
 
-- `GET /observations/by-station/:stationId` - Get observations for a station
+- `GET /v1/observations/by-station/:stationId` - Get observations for a station
   - Query params:
     - `page` (optional): Page number, default 1
     - `limit` (optional): Results per page, default 100, max 500
@@ -191,34 +195,49 @@ All errors follow a consistent shape per the project constitution:
 
 Error codes: `NOT_FOUND`, `VALIDATION_ERROR`, `INTERNAL_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `BAD_REQUEST`
 
+### Rate Limiting
+
+All API endpoints are rate-limited to prevent abuse:
+
+- **Default**: 100 requests per minute
+- **Observations endpoint**: 60 requests per minute (stricter due to larger payloads)
+
+Rate limit information is included in response headers:
+
+- `x-ratelimit-limit`: Total requests allowed in time window
+- `x-ratelimit-remaining`: Requests remaining in current window
+- `x-ratelimit-reset`: Timestamp when limit resets
+
+When rate limit is exceeded, the API returns `429 Too Many Requests`.
+
 ## 🗄️ Database Schema
 
 ### Station
 
-| Field      | Type      | Description                     |
-| ---------- | --------- | ------------------------------- |
-| id         | String    | Station ID (e.g. "44009")       |
-| name       | String    | Station name                    |
-| lat        | Float     | Latitude                        |
-| lon        | Float     | Longitude                       |
-| source     | String    | Data source (default "NDBC")    |
-| isActive   | Boolean   | Active status                   |
-| createdAt  | DateTime  | Record creation time            |
-| updatedAt  | DateTime  | Last update time                |
+| Field     | Type     | Description                  |
+| --------- | -------- | ---------------------------- |
+| id        | String   | Station ID (e.g. "44009")    |
+| name      | String   | Station name                 |
+| lat       | Float    | Latitude                     |
+| lon       | Float    | Longitude                    |
+| source    | String   | Data source (default "NDBC") |
+| isActive  | Boolean  | Active status                |
+| createdAt | DateTime | Record creation time         |
+| updatedAt | DateTime | Last update time             |
 
 ### Observation
 
-| Field         | Type      | Description                    |
-| ------------- | --------- | ------------------------------ |
-| id            | String    | Unique observation ID (cuid)   |
-| stationId     | String    | Foreign key to Station         |
-| observedAt    | DateTime  | Observation timestamp          |
-| waveHeightM   | Float?    | Wave height in meters          |
-| windSpeedMps  | Float?    | Wind speed in m/s              |
-| windDirDeg    | Int?      | Wind direction in degrees      |
-| waterTempC    | Float?    | Water temperature in Celsius   |
-| pressureHpa   | Float?    | Atmospheric pressure in hPa    |
-| createdAt     | DateTime  | Record creation time           |
+| Field        | Type     | Description                  |
+| ------------ | -------- | ---------------------------- |
+| id           | String   | Unique observation ID (cuid) |
+| stationId    | String   | Foreign key to Station       |
+| observedAt   | DateTime | Observation timestamp        |
+| waveHeightM  | Float?   | Wave height in meters        |
+| windSpeedMps | Float?   | Wind speed in m/s            |
+| windDirDeg   | Int?     | Wind direction in degrees    |
+| waterTempC   | Float?   | Water temperature in Celsius |
+| pressureHpa  | Float?   | Atmospheric pressure in hPa  |
+| createdAt    | DateTime | Record creation time         |
 
 ## 🎵 Audio Integration
 
@@ -236,9 +255,10 @@ Transports supported: SSE (default), WebSocket (future), OSC, MIDI, MQTT
 
 - [PRD (Product Requirements)](./docs/PRD.md) - Full project requirements
 - [Audio Clients Guide](./docs/AUDIO_CLIENTS.md) - Sonification integration patterns
+- [Architecture Decision Records (ADRs)](./docs/adr/README.md) - Key architectural decisions
 - [Constitution](/.specify/memory/constitution.md) - Project principles and governance
 - [Engineering Principles](/.github/engineering-principles.md) - Code quality standards
-- [Analysis Report](/.specify/memory/analysis.md) - Current state assessment
+- [Analysis Report](/.specify/memory/analysis-2025-11-14-updated.md) - Current state assessment
 
 ## 🛠️ Development Workflow
 

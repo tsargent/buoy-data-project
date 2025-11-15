@@ -29,7 +29,7 @@ export interface ErrorResponse {
 export function createError(
   code: ErrorCode,
   message: string,
-  details?: unknown
+  details?: unknown,
 ): ErrorResponse {
   return {
     error: {
