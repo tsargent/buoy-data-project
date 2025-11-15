@@ -50,24 +50,24 @@ Ensure the development environment has a working database with test data (statio
 Set up the web-demo application package with Vite, TypeScript, and initial project structure.
 
 **Steps**:
-- [ ] Create `apps/web-demo/package.json` with dependencies:
+- [x] Create `apps/web-demo/package.json` with dependencies:
   - `vite: ^5.0.0`
   - `typescript: ^5.9.3`
   - `leaflet: ^1.9.4`
   - `@types/leaflet: ^1.9.8`
-- [ ] Create `apps/web-demo/tsconfig.json` extending `../../tsconfig.base.json`
-- [ ] Create `apps/web-demo/vite.config.ts` with dev server configuration
-- [ ] Create `apps/web-demo/index.html` as entry point
-- [ ] Create `apps/web-demo/src/main.ts` with basic console.log
-- [ ] Add `"web-demo": "pnpm --filter web-demo dev"` script to root `package.json`
-- [ ] Run `pnpm install` from workspace root
-- [ ] Test dev server starts: `pnpm web-demo`
+- [x] Create `apps/web-demo/tsconfig.json` extending `../../tsconfig.base.json`
+- [x] Create `apps/web-demo/vite.config.ts` with dev server configuration
+- [x] Create `apps/web-demo/index.html` as entry point
+- [x] Create `apps/web-demo/src/main.ts` with basic console.log
+- [x] Add `"web-demo": "pnpm --filter web-demo dev"` script to root `package.json`
+- [x] Run `pnpm install` from workspace root
+- [x] Test dev server starts: `pnpm web-demo`
 
 **Acceptance Criteria**:
-- [ ] `pnpm install` completes without errors
-- [ ] `pnpm web-demo` starts Vite dev server at http://localhost:5173
-- [ ] Browser shows basic HTML page with no console errors
-- [ ] TypeScript compilation works without errors
+- [x] `pnpm install` completes without errors
+- [x] `pnpm web-demo` starts Vite dev server at http://localhost:5173
+- [x] Browser shows basic HTML page with no console errors
+- [x] TypeScript compilation works without errors
 
 **Related Requirements**: Foundation for FR-001 through FR-013
 

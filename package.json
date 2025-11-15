@@ -10,7 +10,8 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "lint": "eslint .",
-    "format": "prettier -w ."
+    "format": "prettier -w .",
+    "web-demo": "pnpm --filter web-demo dev"
   },
   "keywords": [],
   "author": "",
