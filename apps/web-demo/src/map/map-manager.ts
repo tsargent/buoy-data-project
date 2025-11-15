@@ -22,6 +22,10 @@ export function initMap(containerId: string): L.Map {
     scrollWheelZoom: true, // Allow zoom with mouse wheel
     doubleClickZoom: true, // Allow zoom on double click
     dragging: true, // Allow panning by dragging
+    // Touch-specific settings for mobile devices
+    tapTolerance: 15, // Increase tap tolerance for easier touch interaction
+    touchZoom: true, // Enable pinch-to-zoom on touch devices
+    bounceAtZoomLimits: true, // Bounce animation at zoom limits
   });
 
   // Add OpenStreetMap tile layer as primary

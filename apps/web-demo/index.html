@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Buoy Station Map</title>
     <!-- Leaflet CSS -->
     <link
@@ -272,6 +275,7 @@
 
       /* Mobile optimization */
       @media (max-width: 768px) {
+        /* Popup adjustments for mobile */
         .leaflet-popup-content {
           max-width: 90vw !important;
         }
@@ -284,9 +288,12 @@
           font-size: 13px;
         }
 
+        /* Legend adjustments for mobile */
         .map-legend {
-          bottom: 20px;
+          bottom: 15px;
           right: 10px;
+          left: 10px;
+          max-width: calc(100vw - 20px);
           font-size: 12px;
           padding: 10px 12px;
         }
@@ -302,6 +309,101 @@
         .legend-color {
           width: 14px;
           height: 14px;
+        }
+
+        /* Error banner adjustments for mobile */
+        .error-banner {
+          width: calc(100% - 20px);
+          padding: 14px 18px;
+          font-size: 13px;
+        }
+
+        .error-message {
+          font-size: 13px;
+        }
+
+        .error-retry-button {
+          padding: 10px 14px;
+          font-size: 13px;
+          min-height: 44px;
+        }
+
+        /* Ensure tap targets are at least 44x44px */
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out {
+          min-width: 44px !important;
+          min-height: 44px !important;
+          line-height: 44px !important;
+          font-size: 20px !important;
+        }
+
+        .leaflet-popup-close-button {
+          width: 44px !important;
+          height: 44px !important;
+          font-size: 24px !important;
+        }
+
+        .error-close-button {
+          min-width: 44px;
+          min-height: 44px;
+        }
+
+        /* Loading overlay on mobile */
+        .loading-overlay {
+          font-size: 14px;
+        }
+      }
+
+      /* Extra small screens (iPhone SE and similar) */
+      @media (max-width: 375px) {
+        .map-legend {
+          bottom: 10px;
+          right: 5px;
+          left: 5px;
+          font-size: 11px;
+          padding: 8px 10px;
+        }
+
+        .map-legend h4 {
+          font-size: 12px;
+          margin-bottom: 6px;
+        }
+
+        .legend-item {
+          margin: 3px 0;
+        }
+
+        .legend-color {
+          width: 12px;
+          height: 12px;
+        }
+
+        .error-banner {
+          font-size: 12px;
+        }
+
+        .station-popup h3 {
+          font-size: 14px;
+        }
+
+        .station-details p {
+          font-size: 12px;
+        }
+      }
+
+      /* Landscape orientation on mobile */
+      @media (max-width: 768px) and (orientation: landscape) {
+        .map-legend {
+          bottom: 10px;
+          right: 10px;
+          left: auto;
+          max-width: 200px;
+          font-size: 11px;
+          padding: 8px 10px;
+        }
+
+        .error-banner {
+          max-width: 400px;
         }
       }
     </style>

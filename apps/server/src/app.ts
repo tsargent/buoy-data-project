@@ -4,6 +4,9 @@ import cors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import helmet from "@fastify/helmet";
+import fastifyStatic from "@fastify/static";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { env } from "./env.js";
 import stations from "./routes/stations.js";
 import observations from "./routes/observations.js";
@@ -14,6 +17,9 @@ import {
   httpRequestDuration,
 } from "../lib/metrics.js";
 import "./types.js"; // Augment FastifyRequest
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export async function buildApp() {
   const app = Fastify({
@@ -72,6 +78,14 @@ export async function buildApp() {
       "x-ratelimit-remaining": true,
       "x-ratelimit-reset": true,
     },
+  });
+
+  // Static file serving for web-demo
+  // Serve files from ../web-demo/dist directory
+  const staticRoot = join(__dirname, "..", "..", "web-demo", "dist");
+  await app.register(fastifyStatic, {
+    root: staticRoot,
+    prefix: "/", // Serve at root path
   });
 
   // Metrics middleware - track request count and duration
@@ -143,6 +157,25 @@ export async function buildApp() {
   // API v1 routes
   await app.register(stations, { prefix: "/v1/stations" });
   await app.register(observations, { prefix: "/v1/observations" });
+
+  // SPA routing fallback - serve index.html for non-API routes that aren't files
+  app.setNotFoundHandler(async (request, reply) => {
+    // If the route starts with /v1/, /metrics, or /health, it's an API route - return 404
+    if (
+      request.url.startsWith("/v1/") ||
+      request.url.startsWith("/metrics") ||
+      request.url.startsWith("/health")
+    ) {
+      return reply.code(404).send({
+        error: "NOT_FOUND",
+        message: `Route ${request.method}:${request.url} not found`,
+        statusCode: 404,
+      });
+    }
+
+    // Otherwise, serve index.html for SPA routing
+    return reply.sendFile("index.html");
+  });
 
   return app;
 }
