@@ -11,6 +11,7 @@
 
 - Q: What specific data format/API does the existing buoy data source provide for fetching station locations and observation data? → A: Fastify REST API endpoints
 - Q: Which mapping library or service should be used for the interactive map display? → A: Leaflet with OpenStreetMap
+- Q: What determines if a buoy station is "active" for display purposes? → A: Station has active status flag AND recent observation within 24 hours
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -64,7 +65,7 @@ Users want to filter the map view to show only buoys that are currently reportin
 
 ### Edge Cases
 
-- What happens when a buoy station has no recent observations (data is stale or missing)?
+- Stations with stale data (no observations within 24 hours) should not be displayed on the map even if they have active status flag
 - How does the system handle stations with invalid or out-of-bounds coordinates?
 - What happens when the user's device has no internet connection or the API is unavailable?
 - How does the map perform when displaying a large number of buoy stations (50+)?
@@ -90,7 +91,7 @@ Users want to filter the map view to show only buoys that are currently reportin
 
 ### Key Entities
 
-- **Buoy Station**: Represents a NOAA buoy location with unique ID, name, latitude, longitude, and active status
+- **Buoy Station**: Represents a NOAA buoy location with unique ID, name, latitude, longitude, and active status. A station is considered "active" when it has both an active status flag in the database AND has reported observations within the last 24 hours.
 - **Observation**: Time-series measurement data from a buoy including optional sensor readings (wave height in meters, wind speed in m/s, wind direction in degrees, water temperature in Celsius, atmospheric pressure in hPa) and observation timestamp
 - **Map View**: Geographic visualization component that displays buoy locations with zoom/pan controls and coordinate-based positioning
 
