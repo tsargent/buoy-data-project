@@ -9,6 +9,9 @@ export default [
       "**/build/**",
       "**/.next/**",
       "**/coverage/**",
+      "**/prisma/**",
+      "**/*.config.ts",
+      "**/*.config.js",
     ],
   },
   {
@@ -18,11 +21,8 @@ export default [
       parserOptions: {
         ecmaVersion: "latest",
         sourceType: "module",
-        project: [
-          "./tsconfig.base.json",
-          "./apps/*/tsconfig.json",
-          "./packages/*/tsconfig.json",
-        ],
+        project: "./tsconfig.eslint.json",
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     plugins: {

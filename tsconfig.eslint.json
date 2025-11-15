@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "noEmit": true
+  },
+  "include": ["apps/**/*", "packages/**/*"],
+  "references": [
+    { "path": "./apps/server" },
+    { "path": "./apps/worker" },
+    { "path": "./apps/web-demo" },
+    { "path": "./packages/shared" }
+  ]
+}
