@@ -19,20 +19,20 @@
 Ensure the development environment has a working database with test data (stations and observations) before beginning feature implementation.
 
 **Steps**:
-- [ ] Verify PostgreSQL database is running
-- [ ] Verify Prisma schema is up to date: `pnpm --filter server prisma migrate dev`
-- [ ] Check if worker has run and populated data
-- [ ] If no data exists, run worker to fetch initial station and observation data
-- [ ] Verify at least 5 stations exist in database with active status
-- [ ] Verify each station has at least one recent observation
-- [ ] Document test data state in `specs/001-buoy-map-display/test-data.md`
+- [x] Verify PostgreSQL database is running
+- [x] Verify Prisma schema is up to date: `pnpm --filter server prisma migrate dev`
+- [x] Check if worker has run and populated data
+- [x] If no data exists, run worker to fetch initial station and observation data
+- [x] Verify at least 5 stations exist in database with active status
+- [x] Verify each station has at least one recent observation
+- [x] Document test data state in `specs/001-buoy-map-display/test-data.md`
 
 **Acceptance Criteria**:
-- [ ] Database is running and accessible
-- [ ] At least 5 active stations exist in database
-- [ ] Each station has observation data within last 7 days
-- [ ] Can query stations and observations via Prisma
-- [ ] Test data is documented
+- [x] Database is running and accessible
+- [x] At least 5 active stations exist in database
+- [x] Each station has observation data within last 7 days
+- [x] Can query stations and observations via Prisma
+- [x] Test data is documented
 
 **Related Requirements**: Foundation for all testing
 
