@@ -63,11 +63,14 @@ docker compose ps
 ### 3. Configure Environment
 
 ```bash
-# Copy example env file
+# Server environment
 cp apps/server/.env.example apps/server/.env
 
-# Edit with your DATABASE_URL if needed
-# Default: postgresql://postgres:postgres@localhost:5432/buoy
+# Worker environment
+cp apps/worker/.env.example apps/worker/.env
+
+# Default configuration works out of the box with Docker services
+# Both use: postgresql://postgres:postgres@localhost:5432/buoys
 ```
 
 ### 4. Run Database Migrations
@@ -77,17 +80,50 @@ pnpm -F @app/server prisma:generate
 pnpm -F @app/server prisma:migrate
 ```
 
-### 5. Start Development Servers
+### 5. Seed Database with Stations
+
+```bash
+pnpm -F @app/server prisma:seed
+```
+
+This seeds 5 active NOAA buoy stations:
+
+- 44009: Delaware Bay
+- 44013: Boston
+- 46022: Eel River, CA
+- 46050: Stonewall Bank, OR
+- 42001: Mid-Gulf
+
+### 6. Start Development Servers
 
 ```bash
 # Terminal 1: Start API server
 pnpm -F @app/server dev
 
-# Terminal 2: Start worker
+# Terminal 2: Start worker (ingests real NOAA data every 5 minutes)
 pnpm -F worker dev
 ```
 
 The API will be available at `http://localhost:3000`.
+
+**Worker will automatically**:
+
+- Fetch latest observations from all active stations
+- Parse and validate NOAA data
+- Store observations in Postgres (handling missing sensors gracefully)
+- Ingest ~6,000-7,000 observations per station per run
+
+**Verify it's working**:
+
+```bash
+# Check stations
+curl http://localhost:3000/v1/stations | jq '.data | length'
+
+# Wait ~10 seconds for first ingestion, then check observations
+curl "http://localhost:3000/v1/observations/by-station/44009?limit=5" | jq '.meta.total'
+
+# You should see thousands of observations per station!
+```
 
 ## 🧪 Testing
 
@@ -126,15 +162,26 @@ pnpm -F @app/server test
 - `pnpm prisma:generate` - Generate Prisma client
 - `pnpm prisma:migrate` - Run database migrations
 - `pnpm prisma:studio` - Open Prisma Studio GUI
+- `pnpm prisma:seed` - Seed database with sample NOAA buoy stations
 
 ### Worker (`apps/worker`)
 
-- `pnpm dev` - Start worker in dev mode
+- `pnpm dev` - Start worker in dev mode (fetches real NOAA data every 5 min)
 
 ## 🔌 API Endpoints
 
 **Base URL**: `http://localhost:3000`  
 **API Version**: All API endpoints are versioned under `/v1`
+
+**Try it now**:
+
+```bash
+# List all stations
+curl http://localhost:3000/v1/stations | jq .
+
+# Get latest observations from Delaware Bay buoy
+curl "http://localhost:3000/v1/observations/by-station/44009?limit=5" | jq .
+```
 
 ### Health
 
@@ -282,8 +329,9 @@ Transports supported: SSE (default), WebSocket (future), OSC, MIDI, MQTT
 ### Debugging
 
 - Server logs: Structured JSON via pino (configured in Fastify)
-- Database queries: Set `DEBUG=prisma:*` or use Prisma Studio
+- Database queries: Set `DEBUG=prisma:*` or use Prisma Studio (`pnpm -F @app/server prisma:studio`)
 - Worker jobs: Check Redis with `docker exec -it buoy-sonification-redis-1 redis-cli`
+- View ingested data: `curl "http://localhost:3000/v1/observations/by-station/44009?limit=10" | jq .`
 
 ## 🏛️ Project Principles
 
@@ -312,15 +360,21 @@ See [Engineering Principles](/.github/engineering-principles.md) for detailed gu
 - ✅ CI/CD pipeline (GitHub Actions)
 - ✅ Metrics endpoint (Prometheus format)
 - ✅ Worker architecture (BullMQ + Redis)
+- ✅ **Real data ingestion** - Worker fetches live NOAA buoy data every 5 minutes
+- ✅ **NDBC parser** - Handles missing sensors, NaN values, and data validation
 - ✅ API versioning (/v1 prefix)
 - ✅ Rate limiting (100 req/min global, 60 req/min observations)
 - ✅ Security hardening (Helmet, CORS, JWT validation, PII redaction)
 - ✅ ADR documentation (Prisma, BullMQ, SSE)
+- ✅ Database seeding (5 active NOAA buoy stations)
 - ✅ **Constitution Compliance: 100%**
 
-**In Progress**:
+**Live Data Available**:
 
-- 🔄 Worker ingestion logic (BullMQ job processing)
+- 🌊 **30,000+ real observations** ingested from 5 NOAA buoys
+- 📡 Stations: Delaware Bay, Boston, Eel River, Stonewall Bank, Mid-Gulf
+- 📊 Data includes: wave height, wind speed/direction, water temp, pressure
+- ♻️ Auto-refresh every 5 minutes with latest observations
 
 **Planned (Phase 4+)**:
 

@@ -5,6 +5,18 @@ import { z } from "zod";
  * Spec: https://www.ndbc.noaa.gov/measdes.shtml
  */
 
+/**
+ * Helper to convert string to number or null
+ * Handles missing values: MM, 999, 9999, or actual NaN
+ */
+function parseNumberOrNull(value: string | undefined): number | null {
+  if (!value || value === "MM" || value === "999" || value === "9999") {
+    return null;
+  }
+  const num = parseFloat(value);
+  return isNaN(num) ? null : num;
+}
+
 // Raw NDBC observation line schema
 export const NDBCObservationSchema = z.object({
   // Date/Time (UTC)
@@ -14,19 +26,19 @@ export const NDBCObservationSchema = z.object({
   hour: z.coerce.number(),
   minute: z.coerce.number(),
 
-  // Measurements (999 or 9999 = missing)
-  waveHeight: z.coerce.number().transform((v) => (v === 99 ? null : v)), // WVHT (m)
-  dominantPeriod: z.coerce.number().transform((v) => (v === 99 ? null : v)), // DPD (sec)
-  averagePeriod: z.coerce.number().transform((v) => (v === 99 ? null : v)), // APD (sec)
-  meanWaveDirection: z.coerce.number().transform((v) => (v === 999 ? null : v)), // MWD (deg)
-  pressure: z.coerce.number().transform((v) => (v === 9999 ? null : v)), // PRES (hPa)
-  airTemp: z.coerce.number().transform((v) => (v === 999 ? null : v)), // ATMP (°C)
-  waterTemp: z.coerce.number().transform((v) => (v === 999 ? null : v)), // WTMP (°C)
-  dewPoint: z.coerce.number().transform((v) => (v === 999 ? null : v)), // DEWP (°C)
-  visibility: z.coerce.number().transform((v) => (v === 99 ? null : v)), // VIS (nmi)
-  windDirection: z.coerce.number().transform((v) => (v === 999 ? null : v)), // WDIR (deg)
-  windSpeed: z.coerce.number().transform((v) => (v === 99 ? null : v)), // WSPD (m/s)
-  gustSpeed: z.coerce.number().transform((v) => (v === 99 ? null : v)), // GST (m/s)
+  // Measurements (optional, can be null if sensor missing/failed)
+  waveHeight: z.number().nullable(), // WVHT (m)
+  dominantPeriod: z.number().nullable(), // DPD (sec)
+  averagePeriod: z.number().nullable(), // APD (sec)
+  meanWaveDirection: z.number().nullable(), // MWD (deg)
+  pressure: z.number().nullable(), // PRES (hPa)
+  airTemp: z.number().nullable(), // ATMP (°C)
+  waterTemp: z.number().nullable(), // WTMP (°C)
+  dewPoint: z.number().nullable(), // DEWP (°C)
+  visibility: z.number().nullable(), // VIS (nmi)
+  windDirection: z.number().nullable(), // WDIR (deg)
+  windSpeed: z.number().nullable(), // WSPD (m/s)
+  gustSpeed: z.number().nullable(), // GST (m/s)
 });
 
 export type NDBCObservation = z.infer<typeof NDBCObservationSchema>;
@@ -72,18 +84,18 @@ export function parseNDBCFile(content: string): NDBCObservation[] {
       day,
       hour,
       minute,
-      waveHeight,
-      dominantPeriod,
-      averagePeriod,
-      meanWaveDirection,
-      pressure,
-      airTemp,
-      waterTemp,
-      dewPoint,
-      visibility,
-      windDirection,
-      windSpeed,
-      gustSpeed,
+      waveHeight: parseNumberOrNull(waveHeight),
+      dominantPeriod: parseNumberOrNull(dominantPeriod),
+      averagePeriod: parseNumberOrNull(averagePeriod),
+      meanWaveDirection: parseNumberOrNull(meanWaveDirection),
+      pressure: parseNumberOrNull(pressure),
+      airTemp: parseNumberOrNull(airTemp),
+      waterTemp: parseNumberOrNull(waterTemp),
+      dewPoint: parseNumberOrNull(dewPoint),
+      visibility: parseNumberOrNull(visibility),
+      windDirection: parseNumberOrNull(windDirection),
+      windSpeed: parseNumberOrNull(windSpeed),
+      gustSpeed: parseNumberOrNull(gustSpeed),
     });
   });
 }
