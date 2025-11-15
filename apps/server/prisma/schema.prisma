@@ -1,0 +1,33 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+generator client { 
+  provider = "prisma-client-js" 
+}
+
+model Station {
+  id           String        @id @db.VarChar(16)
+  name         String
+  lat          Float
+  lon          Float
+  source       String        @default("NDBC")
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  observations Observation[]
+}
+
+model Observation {
+  id           String   @id @default(cuid())
+  stationId    String
+  observedAt   DateTime
+  waveHeightM  Float?
+  windSpeedMps Float?
+  windDirDeg   Int?
+  waterTempC   Float?
+  pressureHpa  Float?
+  createdAt    DateTime @default(now())
+  station      Station  @relation(fields: [stationId], references: [id])
+  @@index([stationId, observedAt])
+}
