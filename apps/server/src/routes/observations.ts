@@ -50,21 +50,18 @@ const plugin: FastifyPluginAsync = async (app) => {
       ...(since ? { observedAt: { gt: new Date(since) } } : {}),
     };
 
-    return prisma.observation
-      .findMany({
-        where,
-        orderBy: { observedAt: "desc" },
-        take: limit,
-      })
-      .then((rows) => {
-        req.log.info(
-          { stationId, count: rows.length },
-          "Observations retrieved"
-        );
-        // Track domain metric
-        observationsQueriedCounter.inc({ station_id: stationId }, rows.length);
-        return rows.reverse();
-      });
+    const queryPromise = prisma.observation.findMany({
+      where,
+      orderBy: { observedAt: "desc" },
+      take: limit,
+    });
+
+    return queryPromise.then((rows) => {
+      req.log.info({ stationId, count: rows.length }, "Observations retrieved");
+      // Track domain metric
+      observationsQueriedCounter.inc({ station_id: stationId }, rows.length);
+      return rows.reverse();
+    });
   });
 };
 
