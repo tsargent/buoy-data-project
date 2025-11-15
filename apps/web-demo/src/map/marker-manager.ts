@@ -3,11 +3,19 @@
  */
 
 import L from "leaflet";
-import type { Station } from "../types.js";
-import { buildStationPopup } from "./popup-builder.js";
+import type { Station, Observation } from "../types.js";
+import { buildStationPopup, buildObservationError } from "./popup-builder.js";
+import { getLatestObservation } from "../api/observations.js";
+import { CACHE_CONFIG } from "../config.js";
 
 // Store marker references and station data for later updates
 const markerMap = new Map<string, { marker: L.Marker; station: Station }>();
+
+// Observation cache: stationId -> {observation, timestamp}
+const observationCache = new Map<
+  string,
+  { observation: Observation | null; timestamp: number }
+>();
 
 /**
  * Add station markers to the map
@@ -41,6 +49,11 @@ export function addStationMarkers(map: L.Map, stations: Station[]): void {
     marker.bindPopup(popupContent, {
       maxWidth: 300,
       minWidth: 250,
+    });
+
+    // Add event listener for popup open to fetch observation data
+    marker.on("popupopen", () => {
+      void fetchAndUpdateObservation(station.id, marker);
     });
 
     // Add marker to map
@@ -113,4 +126,79 @@ export function getAllMarkers(): Map<
   { marker: L.Marker; station: Station }
 > {
   return markerMap;
+}
+
+/**
+ * Fetch observation data and update popup
+ *
+ * @param stationId - Station ID
+ * @param marker - Marker instance
+ */
+async function fetchAndUpdateObservation(
+  stationId: string,
+  marker: L.Marker
+): Promise<void> {
+  const station = markerMap.get(stationId)?.station;
+  if (!station) {
+    return;
+  }
+
+  // Check cache first
+  const cached = observationCache.get(stationId);
+  const now = Date.now();
+
+  if (
+    cached &&
+    now - cached.timestamp < CACHE_CONFIG.observationCacheDuration
+  ) {
+    // Use cached observation
+    console.log(`Using cached observation for station ${stationId}`);
+    updatePopupContent(marker, station, cached.observation);
+    return;
+  }
+
+  // Fetch new observation data
+  try {
+    console.log(`Fetching observation for station ${stationId}`);
+    const observation = await getLatestObservation(stationId);
+
+    // Cache the result
+    observationCache.set(stationId, {
+      observation,
+      timestamp: now,
+    });
+
+    // Update popup content
+    updatePopupContent(marker, station, observation);
+  } catch (error) {
+    console.error(
+      `Failed to fetch observation for station ${stationId}:`,
+      error
+    );
+    // Update popup with error state
+    const popup = marker.getPopup();
+    if (popup) {
+      popup.setContent(
+        buildStationPopup(station, null) + buildObservationError()
+      );
+    }
+  }
+}
+
+/**
+ * Update popup content with observation data
+ *
+ * @param marker - Marker instance
+ * @param station - Station data
+ * @param observation - Observation data or null
+ */
+function updatePopupContent(
+  marker: L.Marker,
+  station: Station,
+  observation: Observation | null
+): void {
+  const popup = marker.getPopup();
+  if (popup) {
+    popup.setContent(buildStationPopup(station, observation));
+  }
 }

@@ -241,16 +241,16 @@ Make markers clickable and display basic station information in a popup.
 When a marker is clicked, fetch the latest observation data and display it in the popup with proper formatting. Includes simple caching to avoid redundant API calls.
 
 **Steps**:
-- [ ] Create `apps/web-demo/src/utils/date-formatter.ts` with:
+- [x] Create `apps/web-demo/src/utils/date-formatter.ts` with:
   - `formatTimestamp(isoString: string): string`
   - Use `toLocaleString()` for browser's locale
   - Display timezone abbreviation (e.g., "PST", "EST")
   - Human-readable format: "Nov 15, 2025 10:30 AM PST"
-- [ ] Create `apps/web-demo/src/utils/data-helpers.ts` with:
+- [x] Create `apps/web-demo/src/utils/data-helpers.ts` with:
   - `formatValue(value: number | null, unit: string): string`
   - Returns "Not Available" for null values
   - Formats numbers with proper precision and units
-- [ ] Update `popup-builder.ts` to:
+- [x] Update `popup-builder.ts` to:
   - Accept optional observation parameter
   - Add loading state HTML
   - Add observation data HTML with all sensor readings:
@@ -261,27 +261,27 @@ When a marker is clicked, fetch the latest observation data and display it in th
     - Air Pressure (hPa)
   - Use `formatValue()` for each sensor reading
   - Display formatted timestamp with timezone
-- [ ] Create simple observation cache:
+- [x] Create simple observation cache:
   - Use `Map<stationId, {observation: Observation, timestamp: number}>`
   - Cache observations for 5 minutes
   - Check cache before making API call
-- [ ] Update marker click handler to:
+- [x] Update marker click handler to:
   - Show popup with station info + loading state
   - Check cache first for observation
   - If not cached or stale, fetch: `getLatestObservation(stationId)`
   - Update popup with observation data
   - Handle case where no observations exist
-- [ ] Add error handling for observation fetch failures
+- [x] Add error handling for observation fetch failures
 
 **Acceptance Criteria**:
-- [ ] Latest observation data appears in popup after clicking marker
-- [ ] All available sensor readings display with correct units
-- [ ] Missing/null sensor readings show "Not Available"
-- [ ] Timestamp is formatted with locale and timezone: "Nov 15, 2025 10:30 AM PST"
-- [ ] Loading indicator shows while fetching observation
-- [ ] Observation loads within 2 seconds (SC-002)
-- [ ] Cached observations load instantly (no API call)
-- [ ] Cache expires after 5 minutes
+- [x] Latest observation data appears in popup after clicking marker
+- [x] All available sensor readings display with correct units
+- [x] Missing/null sensor readings show "Not Available"
+- [x] Timestamp is formatted with locale and timezone: "Nov 15, 2025 10:30 AM PST"
+- [x] Loading indicator shows while fetching observation
+- [x] Observation loads within 2 seconds (SC-002)
+- [x] Cached observations load instantly (no API call)
+- [x] Cache expires after 5 minutes
 
 **Related Requirements**: FR-004, FR-005, FR-006, FR-007, SC-002, SC-007
 
