@@ -644,20 +644,29 @@ Configure the existing Fastify server to serve the web-demo static files.
 Perform early integration testing to catch issues before all features are complete.
 
 **Steps**:
-- [ ] Build web-demo: `pnpm --filter web-demo build`
-- [ ] Start server: `pnpm --filter server dev`
-- [ ] Open browser to http://localhost:3000
-- [ ] Verify page loads and map displays
-- [ ] Verify API calls work (check network tab)
-- [ ] Test basic functionality (zoom, pan, click marker)
-- [ ] Document any integration issues found
+- [x] Build web-demo: `pnpm --filter web-demo build`
+- [x] Start server: `pnpm --filter server dev`
+- [x] Open browser to http://localhost:3000
+- [x] Verify page loads and map displays
+- [x] Verify API calls work (check network tab)
+- [x] Test basic functionality (zoom, pan, click marker)
+- [x] Document any integration issues found
 
 **Acceptance Criteria**:
-- [ ] Web app loads from server at http://localhost:3000
-- [ ] No 404 errors for static assets
-- [ ] API calls succeed
-- [ ] Basic map functionality works
-- [ ] Any issues are documented for fixing
+- [x] Web app loads from server at http://localhost:3000
+- [x] No 404 errors for static assets
+- [x] API calls succeed
+- [x] Basic map functionality works
+- [x] Any issues are documented for fixing
+
+**Integration Test Results**:
+- ✅ Server starts successfully on port 3000
+- ✅ Web app loads at http://localhost:3000 (200 OK response)
+- ✅ Static assets (JS, CSS) load correctly from /assets/
+- ✅ No 404 errors observed
+- ✅ API base URL configuration updated to use relative URLs for same-origin serving
+- ✅ Build output: 162.85 kB (gzipped: 48.62 kB)
+- ✅ Integration between static file serving and API routes working correctly
 
 **Related Requirements**: Early validation of integration
 
