@@ -4,6 +4,9 @@
 
 Transform real-time and historical NOAA buoy observations into reliable, well-structured APIs and derived sonification events for exploratory auditory analytics.
 
+<img width="1536" height="1024" alt="ChatGPT Image Nov 14, 2025, 11_40_20 PM" src="https://github.com/user-attachments/assets/d125c417-db27-4ba9-898a-eb448ca11277" />
+
+
 ## 🏗️ Architecture
 
 This is a TypeScript monorepo using pnpm workspaces:
