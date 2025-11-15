@@ -18,6 +18,57 @@ export class ApiRequestError extends Error {
     super(message);
     this.name = "ApiRequestError";
   }
+
+  /**
+   * Get user-friendly error message for HTTP status codes
+   */
+  private getStatusMessage(): string | null {
+    if (!this.status) return null;
+
+    if (this.status === 404) {
+      return "The requested data could not be found.";
+    }
+    if (this.status === 429) {
+      return "Too many requests. Please wait a moment and try again.";
+    }
+    if (this.status >= 400 && this.status < 500) {
+      return "Invalid request. Please refresh the page and try again.";
+    }
+    if (this.status >= 500) {
+      return "Server error. Please try again later.";
+    }
+
+    return null;
+  }
+
+  /**
+   * Get user-friendly error message (non-technical)
+   */
+  getUserMessage(): string {
+    // Network/connection errors
+    if (this.code === "NETWORK_ERROR" || !navigator.onLine) {
+      return "Unable to connect to the server. Please check your internet connection.";
+    }
+
+    // Timeout errors
+    if (this.code === "TIMEOUT") {
+      return "Request timed out, please try again.";
+    }
+
+    // Parse errors
+    if (this.code === "PARSE_ERROR") {
+      return "Invalid response from server. Please try again later.";
+    }
+
+    // HTTP status errors
+    const statusMessage = this.getStatusMessage();
+    if (statusMessage) {
+      return statusMessage;
+    }
+
+    // Fallback to original message if it's user-friendly
+    return this.message || "An unexpected error occurred. Please try again.";
+  }
 }
 
 /**

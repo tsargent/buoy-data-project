@@ -3,10 +3,17 @@
  */
 
 // API Configuration
-// Use environment variable if available, otherwise default to localhost
+// Use environment variable if available
+// In production (served from same origin), use relative URLs
+// In development (Vite dev server), use localhost:3000
 const envApiUrl =
   typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL;
-export const API_BASE_URL = envApiUrl || "http://localhost:3000";
+const isDevServer =
+  typeof import.meta !== "undefined" &&
+  import.meta.env?.MODE === "development" &&
+  window.location.port === "5173";
+export const API_BASE_URL =
+  envApiUrl || (isDevServer ? "http://localhost:3000" : "");
 
 // Request timeout in milliseconds (15 seconds)
 export const REQUEST_TIMEOUT = 15000;

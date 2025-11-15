@@ -22,7 +22,7 @@ const plugin: FastifyPluginAsync = async (app) => {
       const error = createError(
         ErrorCode.VALIDATION_ERROR,
         "Invalid pagination parameters",
-        parseResult.error.format(),
+        parseResult.error.format()
       );
       return reply
         .code(getStatusForErrorCode(ErrorCode.VALIDATION_ERROR))
@@ -37,12 +37,26 @@ const plugin: FastifyPluginAsync = async (app) => {
         where: { isActive: true },
         skip,
         take: limit,
+        include: {
+          observations: {
+            orderBy: { observedAt: "desc" },
+            take: 1,
+            select: { observedAt: true },
+          },
+        },
       }),
       prisma.station.count({ where: { isActive: true } }),
     ]);
 
+    // Transform to include lastObservationAt at top level
+    const stationsWithLastObservation = stations.map((station) => ({
+      ...station,
+      lastObservationAt: station.observations[0]?.observedAt ?? null,
+      observations: undefined, // Remove the observations array from response
+    }));
+
     const response: PaginatedResponse<Station> = {
-      data: stations,
+      data: stationsWithLastObservation,
       meta: {
         page,
         limit,
@@ -60,7 +74,7 @@ const plugin: FastifyPluginAsync = async (app) => {
       const error = createError(
         ErrorCode.VALIDATION_ERROR,
         "Invalid station ID",
-        parseResult.error.format(),
+        parseResult.error.format()
       );
       return reply
         .code(getStatusForErrorCode(ErrorCode.VALIDATION_ERROR))
@@ -68,15 +82,31 @@ const plugin: FastifyPluginAsync = async (app) => {
     }
 
     const { id } = parseResult.data;
-    return prisma.station.findUnique({ where: { id } }).then((station) => {
-      if (!station) {
-        const error = createError(ErrorCode.NOT_FOUND, "Station not found");
-        return reply
-          .code(getStatusForErrorCode(ErrorCode.NOT_FOUND))
-          .send(error);
-      }
-      return station;
-    });
+    return prisma.station
+      .findUnique({
+        where: { id },
+        include: {
+          observations: {
+            orderBy: { observedAt: "desc" },
+            take: 1,
+            select: { observedAt: true },
+          },
+        },
+      })
+      .then((station) => {
+        if (!station) {
+          const error = createError(ErrorCode.NOT_FOUND, "Station not found");
+          return reply
+            .code(getStatusForErrorCode(ErrorCode.NOT_FOUND))
+            .send(error);
+        }
+        // Transform to include lastObservationAt at top level
+        return {
+          ...station,
+          lastObservationAt: station.observations[0]?.observedAt ?? null,
+          observations: undefined, // Remove the observations array from response
+        };
+      });
   });
 };
 

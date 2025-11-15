@@ -1,14 +1,430 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Buoy Station Map</title>
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+
+      /* Popup styling */
+      .station-popup {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.5;
+      }
+
+      .station-popup h3 {
+        margin: 0 0 0.75rem 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.5rem;
+      }
+
+      .station-details p {
+        margin: 0.5rem 0;
+        font-size: 14px;
+        color: #34495e;
+      }
+
+      .station-details strong {
+        color: #2c3e50;
+        font-weight: 600;
+      }
+
+      .observation-data {
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #ecf0f1;
+      }
+
+      .observation-data h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      .observation-time {
+        margin: 0.5rem 0;
+        font-size: 13px;
+        color: #7f8c8d;
+      }
+
+      .sensor-readings {
+        margin-top: 0.75rem;
+      }
+
+      .sensor-readings p {
+        margin: 0.4rem 0;
+        font-size: 13px;
+        color: #34495e;
+      }
+
+      .sensor-readings strong {
+        color: #2c3e50;
+        font-weight: 500;
+        display: inline-block;
+        min-width: 140px;
+      }
+
+      .loading-text {
+        font-size: 13px;
+        color: #7f8c8d;
+        font-style: italic;
+      }
+
+      .error-text {
+        font-size: 13px;
+        color: #e74c3c;
+        font-style: italic;
+      }
+
+      /* Custom marker styling */
+      .custom-marker {
+        background: transparent;
+        border: none;
+      }
+
+      .marker-pin {
+        width: 20px;
+        height: 20px;
+        border-radius: 50% 50% 50% 0;
+        position: absolute;
+        transform: rotate(-45deg);
+        left: 50%;
+        top: 50%;
+        margin: -20px 0 0 -10px;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .marker-pin::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        margin: 6px 0 0 6px;
+        background: rgba(255, 255, 255, 0.5);
+        position: absolute;
+        border-radius: 50%;
+      }
+
+      /* Map legend */
+      .map-legend {
+        position: absolute;
+        bottom: 30px;
+        right: 10px;
+        background: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        font-size: 13px;
+      }
+
+      .map-legend h4 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 6px 0;
+        color: #34495e;
+      }
+
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        margin-right: 8px;
+        border: 2px solid #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+
+      .legend-color.green {
+        background-color: green;
+      }
+
+      .legend-color.yellow {
+        background-color: yellow;
+      }
+
+      .legend-color.gray {
+        background-color: gray;
+      }
+
+      /* Error banner styling */
+      .error-banner {
+        position: fixed;
+        top: -100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fee;
+        border: 2px solid #e74c3c;
+        border-radius: 8px;
+        padding: 16px 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        z-index: 10000;
+        max-width: 500px;
+        width: 90%;
+        transition: top 0.3s ease-out;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+      }
+
+      .error-banner-visible {
+        top: 20px;
+      }
+
+      .error-message {
+        margin: 0 0 12px 0;
+        color: #c0392b;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.5;
+      }
+
+      .error-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+      }
+
+      .error-retry-button {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .error-retry-button:hover:not(:disabled) {
+        background: #c0392b;
+      }
+
+      .error-retry-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .error-retry-limit {
+        margin: 8px 0 0 0;
+        color: #7f8c8d;
+        font-size: 12px;
+        font-style: italic;
+      }
+
+      .error-close-button {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: transparent;
+        border: none;
+        color: #c0392b;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px 8px;
+        transition: color 0.2s;
+      }
+
+      .error-close-button:hover {
+        color: #e74c3c;
+      }
+
+      /* Mobile optimization */
+      @media (max-width: 768px) {
+        /* Popup adjustments for mobile */
+        .leaflet-popup-content {
+          max-width: 90vw !important;
+        }
+
+        .station-popup h3 {
+          font-size: 15px;
+        }
+
+        .station-details p {
+          font-size: 13px;
+        }
+
+        /* Legend adjustments for mobile */
+        .map-legend {
+          bottom: 15px;
+          right: 10px;
+          left: 10px;
+          max-width: calc(100vw - 20px);
+          font-size: 12px;
+          padding: 10px 12px;
+        }
+
+        .map-legend h4 {
+          font-size: 13px;
+        }
+
+        .legend-item {
+          margin: 4px 0;
+        }
+
+        .legend-color {
+          width: 14px;
+          height: 14px;
+        }
+
+        /* Error banner adjustments for mobile */
+        .error-banner {
+          width: calc(100% - 20px);
+          padding: 14px 18px;
+          font-size: 13px;
+        }
+
+        .error-message {
+          font-size: 13px;
+        }
+
+        .error-retry-button {
+          padding: 10px 14px;
+          font-size: 13px;
+          min-height: 44px;
+        }
+
+        /* Ensure tap targets are at least 44x44px */
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out {
+          min-width: 44px !important;
+          min-height: 44px !important;
+          line-height: 44px !important;
+          font-size: 20px !important;
+        }
+
+        .leaflet-popup-close-button {
+          width: 44px !important;
+          height: 44px !important;
+          font-size: 24px !important;
+        }
+
+        .error-close-button {
+          min-width: 44px;
+          min-height: 44px;
+        }
+
+        /* Loading overlay on mobile */
+        .loading-overlay {
+          font-size: 14px;
+        }
+      }
+
+      /* Extra small screens (iPhone SE and similar) */
+      @media (max-width: 375px) {
+        .map-legend {
+          bottom: 10px;
+          right: 5px;
+          left: 5px;
+          font-size: 11px;
+          padding: 8px 10px;
+        }
+
+        .map-legend h4 {
+          font-size: 12px;
+          margin-bottom: 6px;
+        }
+
+        .legend-item {
+          margin: 3px 0;
+        }
+
+        .legend-color {
+          width: 12px;
+          height: 12px;
+        }
+
+        .error-banner {
+          font-size: 12px;
+        }
+
+        .station-popup h3 {
+          font-size: 14px;
+        }
+
+        .station-details p {
+          font-size: 12px;
+        }
+      }
+
+      /* Landscape orientation on mobile */
+      @media (max-width: 768px) and (orientation: landscape) {
+        .map-legend {
+          bottom: 10px;
+          right: 10px;
+          left: auto;
+          max-width: 200px;
+          font-size: 11px;
+          padding: 8px 10px;
+        }
+
+        .error-banner {
+          max-width: 400px;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="app">
-      <h1>Buoy Station Map</h1>
-      <p>Loading...</p>
+    <div id="map"></div>
+    <!-- Map Legend -->
+    <div class="map-legend">
+      <h4>Data Freshness</h4>
+      <div class="legend-item">
+        <div class="legend-color green"></div>
+        <span>Fresh (&lt;6hr)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color yellow"></div>
+        <span>Aging (6-24hr)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color gray"></div>
+        <span>Stale (&gt;24hr)</span>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
