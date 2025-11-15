@@ -13,6 +13,7 @@
 - Q: Which mapping library or service should be used for the interactive map display? → A: Leaflet with OpenStreetMap
 - Q: What determines if a buoy station is "active" for display purposes? → A: Station has active status flag AND recent observation within 24 hours
 - Q: Should the application implement security measures despite no authentication requirement? → A: Basic protections: rate limiting and input validation only
+- Q: How should the UI visually communicate different data states to users? → A: Use color-coded markers: green for fresh data (<6hr), yellow for aging data (6-24hr), gray for API errors
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -67,6 +68,8 @@ Users want to filter the map view to show only buoys that are currently reportin
 ### Edge Cases
 
 - Stations with stale data (no observations within 24 hours) should not be displayed on the map even if they have active status flag
+- Stations with observations between 6-24 hours old should be displayed with yellow markers to indicate aging data
+- Stations experiencing API errors or connectivity issues should be displayed with gray markers to indicate unreliable status
 - How does the system handle stations with invalid or out-of-bounds coordinates?
 - What happens when the user's device has no internet connection or the API is unavailable?
 - How does the map perform when displaying a large number of buoy stations (50+)?
@@ -89,6 +92,7 @@ Users want to filter the map view to show only buoys that are currently reportin
 - **FR-010**: System MUST provide visual feedback during data loading
 - **FR-011**: System MUST handle data source errors gracefully with user-friendly error messages
 - **FR-012**: System MUST work on modern desktop and mobile web browsers
+- **FR-013**: System MUST use color-coded markers to visually communicate data freshness: green for observations less than 6 hours old, yellow for observations between 6-24 hours old, and gray for stations with API errors or connectivity issues
 
 ### Non-Functional Requirements
 
