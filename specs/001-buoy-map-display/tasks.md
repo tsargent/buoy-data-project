@@ -427,25 +427,25 @@ Add robust error handling for network issues, API failures, and invalid data.
 Add input validation to prevent malformed API requests.
 
 **Steps**:
-- [ ] Create `apps/web-demo/src/utils/validators.ts` with:
+- [x] Create `apps/web-demo/src/utils/validators.ts` with:
   - `isValidStationId(id: string): boolean`
   - `isValidLatitude(lat: number): boolean`
   - `isValidLongitude(lng: number): boolean`
   - `isValidPagination(page: number, limit: number): boolean`
-- [ ] Update `api/stations.ts` to:
+- [x] Update `api/stations.ts` to:
   - Validate pagination parameters before making request
   - Throw validation error for invalid params
-- [ ] Update `api/observations.ts` to:
+- [x] Update `api/observations.ts` to:
   - Validate station ID format
   - Check for empty/null station ID
-- [ ] Add TypeScript type guards where appropriate
-- [ ] Test with invalid inputs (negative page numbers, empty IDs, etc.)
+- [x] Add TypeScript type guards where appropriate
+- [x] Test with invalid inputs (negative page numbers, empty IDs, etc.)
 
 **Acceptance Criteria**:
-- [ ] Invalid inputs are caught before making API requests
-- [ ] Validation errors show helpful messages
-- [ ] No malformed requests are sent to API
-- [ ] TypeScript catches type errors at compile time
+- [x] Invalid inputs are caught before making API requests
+- [x] Validation errors show helpful messages
+- [x] No malformed requests are sent to API
+- [x] TypeScript catches type errors at compile time
 
 **Related Requirements**: NFR-002
 
