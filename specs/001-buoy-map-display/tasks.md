@@ -128,26 +128,26 @@ Create TypeScript types matching the API responses and build a reusable HTTP cli
 Set up the basic Leaflet map with OpenStreetMap tiles, zoom controls, and pan functionality.
 
 **Steps**:
-- [ ] Add Leaflet CSS import to `index.html`
-- [ ] Create `apps/web-demo/src/map/map-manager.ts` with:
+- [x] Add Leaflet CSS import to `index.html`
+- [x] Create `apps/web-demo/src/map/map-manager.ts` with:
   - `initMap(containerId: string): L.Map` function
   - OpenStreetMap tile layer configuration with proper attribution
   - Initial view centered on US coasts (lat: 37.8, lng: -96, zoom: 4)
   - Zoom control configuration
   - Pan settings
-- [ ] Update `index.html` with map container div (`<div id="map"></div>`)
-- [ ] Add CSS for full-screen map layout
-- [ ] Update `src/main.ts` to call `initMap('map')` on DOMContentLoaded
-- [ ] Add OSM attribution: "© OpenStreetMap contributors"
-- [ ] Consider adding fallback tile provider (e.g., CARTO) for redundancy
+- [x] Update `index.html` with map container div (`<div id="map"></div>`)
+- [x] Add CSS for full-screen map layout
+- [x] Update `src/main.ts` to call `initMap('map')` on DOMContentLoaded
+- [x] Add OSM attribution: "© OpenStreetMap contributors"
+- [x] Consider adding fallback tile provider (e.g., CARTO) for redundancy
 
 **Acceptance Criteria**:
-- [ ] Map displays with OpenStreetMap tiles
-- [ ] User can zoom in/out with mouse wheel or +/- controls
-- [ ] User can pan by clicking and dragging
-- [ ] Map fills the viewport and is responsive
-- [ ] No console errors or tile loading issues
-- [ ] OSM attribution is visible on map
+- [x] Map displays with OpenStreetMap tiles
+- [x] User can zoom in/out with mouse wheel or +/- controls
+- [x] User can pan by clicking and dragging
+- [x] Map fills the viewport and is responsive
+- [x] No console errors or tile loading issues
+- [x] OSM attribution is visible on map
 
 **Related Requirements**: FR-002, FR-008
 
