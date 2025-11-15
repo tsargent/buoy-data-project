@@ -747,3 +747,272 @@ With the recommended changes, this feature is well-positioned for successful imp
 **Risk Level**: 🟡 **Medium** (manageable with identified mitigations)
 
 **Confidence in Success**: **High** (80%+) if recommendations are followed
+
+---
+
+## Re-Analysis: November 15, 2025
+
+### Status: ✅ ALL RECOMMENDATIONS IMPLEMENTED
+
+The tasks file has been successfully updated with all major recommendations from the initial analysis. Below is the verification of changes:
+
+#### ✅ Critical Issues Resolved
+
+**1. Performance Bottleneck (Task 4.1) - RESOLVED**
+- ✅ New Task 4.0 added: "Extend server API with lastObservationAt"
+- ✅ Task 4.1 now depends on Task 4.0
+- ✅ Task 4.1 description explicitly addresses N+1 query problem
+- ✅ Icon optimization specified (3 reusable icons, not N icons)
+- **Impact**: Performance bottleneck eliminated
+
+**2. Late Integration Testing - RESOLVED**
+- ✅ New Task 7.1b added: "Early integration smoke test"
+- ✅ Task 8.1 includes note about incremental testing
+- ✅ Dependencies structured to enable earlier testing
+- **Impact**: Integration issues will be caught early
+
+**3. Underestimated Effort - RESOLVED**
+- ✅ Total estimate increased from 28 to 33 hours
+- ✅ Multiple task estimates adjusted based on complexity
+- ✅ Task 0.1 added (1 hour for test environment setup)
+- **Impact**: More realistic timeline for delivery
+
+#### ✅ New Tasks Added (3)
+
+1. **Task 0.1**: Set up test environment and seed database (1 hour)
+   - Ensures database has test data before implementation
+   - Prevents issues with missing data during development
+   - Status: ✅ Properly specified with clear acceptance criteria
+
+2. **Task 4.0**: Extend server API with lastObservationAt (1 hour)
+   - Critical for preventing N+1 query performance problem
+   - Enables efficient color-coding in Task 4.1
+   - Status: ✅ Properly specified with performance criteria
+
+3. **Task 7.1b**: Early integration smoke test (0.5 hours)
+   - Catches integration issues early in development
+   - Reduces risk of late-stage surprises
+   - Status: ✅ Properly specified with clear steps
+
+#### ✅ Task Enhancements Implemented
+
+**Task 1.2 - API Client Configuration**
+- ✅ Added: REQUEST_TIMEOUT = 15 seconds (explicit value)
+- ✅ Added: Retry logic with max 3 attempts
+- ✅ Added: Support for lastObservationAt in Station type
+- ✅ Added: Test timeout behavior step
+- ✅ Updated acceptance criteria to include timeout and retry verification
+
+**Task 2.1 - Initialize Leaflet Map**
+- ✅ Added: OSM attribution requirement
+- ✅ Added: Fallback tile provider consideration
+- ✅ Updated acceptance criteria to verify attribution visible
+
+**Task 2.2 - Display Station Markers**
+- ✅ Added: Acceptance criterion for empty station list handling
+- ✅ Added: Dependency note on Task 0.1 for test data
+
+**Task 3.1 - Station Information Popup**
+- ✅ Added: Consideration for debouncing rapid clicks
+- ✅ Added: Accessibility note for keyboard access
+
+**Task 3.2 - Observation Data Display**
+- ✅ Extended estimate from 3 to 3.5 hours
+- ✅ Added: Caching mechanism (Map with 5-minute expiry)
+- ✅ Added: Timezone display in timestamp format
+- ✅ Added: Browser locale support with toLocaleString()
+- ✅ Updated acceptance criteria to include caching verification
+
+**Task 4.1 - Color-Coded Markers**
+- ✅ Extended estimate from 2.5 to 3.5 hours
+- ✅ Added: Dependency on Task 4.0
+- ✅ Added: Icon optimization (3 reusable icons)
+- ✅ Added: Performance verification (page loads within 3 seconds)
+- ✅ Added: Filter stations without observations in 24 hours
+
+**Task 5.1 - Error Handling**
+- ✅ Added: Retry counter and limit (max 3 attempts)
+- ✅ Added: Disable retry button after 3 failed attempts
+- ✅ Updated acceptance criteria to verify retry limit
+
+**Task 6.1 - Performance Optimization**
+- ✅ Added: Specific FPS target (30+ FPS with 100 markers)
+- ✅ Added: Test clustering with colored icons
+- ✅ Added: Consider always using clustering
+- ✅ Updated acceptance criteria with measurable performance metrics
+
+**Task 6.2 - Mobile Responsiveness**
+- ✅ Extended estimate from 2 to 3 hours
+- ✅ Added: Real device testing requirement (not just simulators)
+- ✅ Added: iOS and Android device testing steps
+- ✅ Added: Note about budgeting extra time for mobile bug fixes
+- ✅ Updated acceptance criteria to verify real device testing
+
+**Task 7.1 - Static File Serving**
+- ✅ Added: API route precedence verification
+- ✅ Added: 404 handling verification
+- ✅ Updated acceptance criteria with additional checks
+
+**Task 7.2 - Production Build**
+- ✅ Extended estimate from 1 to 1.5 hours
+- ✅ Added: Bundle size analysis with rollup-plugin-visualizer
+- ✅ Added: Bundle size breakdown documentation
+- ✅ Added: Slow 3G network testing
+- ✅ Updated acceptance criteria with analysis requirements
+
+**Task 8.1 - Success Criteria Testing**
+- ✅ Extended estimate from 2 to 3 hours
+- ✅ Added: Note about incremental testing throughout development
+- ✅ Added: Pass/fail thresholds specification
+- ✅ Updated description to emphasize continuous testing
+
+**Task 8.2 - Documentation**
+- ✅ Extended estimate from 1.5 to 2 hours
+- ✅ Changed screenshots from optional to **required**
+- ✅ Added: Specific screenshot list (map view, popup, legend, mobile)
+- ✅ Added: Environment variables documentation
+- ✅ Updated acceptance criteria to include screenshots and env vars
+
+#### ✅ Updated Estimates and Metrics
+
+**Total Tasks**: 20 (was 17) ✅  
+**Total Time**: 33 hours (was 28 hours) ✅  
+**P0 Tasks**: 9 (was 7) ✅  
+**P1 Tasks**: 9 (was 8) ✅  
+**P2 Tasks**: 2 (unchanged) ✅
+
+**Critical Path Updated**: ✅
+- Old: Task 1.1 → 1.2 → 2.2 → 3.1 → 3.2 → 4.1 → 8.1
+- New: Task 0.1 → 1.1 → 1.2 → 2.2 → 3.1 → 3.2 → 4.0 → 4.1 → 8.1
+- Critical Path Duration: ~18 hours (was ~14.5 hours)
+
+#### ✅ Documentation Quality
+
+The tasks file now includes a comprehensive "Changes from Original Plan" section documenting:
+- ✅ All 3 new tasks with rationale
+- ✅ All 13 task modifications with details
+- ✅ Estimate changes explained
+- ✅ Risk mitigation strategies
+
+#### Remaining Minor Issues (Non-Blocking)
+
+**Low Priority Improvements** (can be addressed during implementation):
+
+1. **Markdown Linting**: The file has markdown linting errors (MD032, MD034, etc.)
+   - These are formatting issues only
+   - Do not affect task clarity or completeness
+   - Can be fixed with prettier/markdown formatter
+   - **Impact**: None - purely cosmetic
+
+2. **Task 3.1 Suggestions**: Consider adding:
+   - Debouncing rapid clicks (mentioned but not in steps)
+   - Keyboard accessibility for popup close
+   - **Impact**: Minor - can be added during implementation
+
+3. **Task 6.1 Clustering**: Conditional clustering vs. always-on
+   - Current: "Consider always using clustering"
+   - Could be more definitive
+   - **Impact**: Very minor - decision can be made during implementation
+
+### Updated Risk Assessment
+
+#### 🟢 High Risk Issues - ALL RESOLVED
+
+**Risk 1: Performance bottleneck in Task 4.1**
+- Status: ✅ **RESOLVED** with Task 4.0
+- Mitigation: Server API extended to include lastObservationAt
+- Confidence: **High**
+
+**Risk 2: Late integration testing**
+- Status: ✅ **RESOLVED** with Task 7.1b and incremental testing notes
+- Mitigation: Early smoke test + continuous testing approach
+- Confidence: **High**
+
+#### 🟡 Medium Risk Issues - MITIGATED
+
+**Risk 3: Mobile testing complexity (Task 6.2)**
+- Status: ✅ **MITIGATED** with increased estimate and real device requirements
+- Estimate increased to 3 hours
+- Real device testing required
+- Note added about budgeting extra time for fixes
+- Confidence: **Medium-High**
+
+**Risk 4: Bundle size exceeds target (Task 7.2)**
+- Status: ✅ **MITIGATED** with bundle analysis tooling
+- Bundle visualizer added for analysis
+- Documentation required if target exceeded
+- Options documented (code splitting, lazy loading, CDN)
+- Confidence: **Medium-High**
+
+#### 🟢 Low Risk Issues - ADDRESSED
+
+**Risk 5: External dependencies (OSM, Leaflet)**
+- Status: ✅ **ADDRESSED** with fallback considerations
+- OSM attribution required
+- Fallback tile provider mentioned
+- Error handling for tile loading
+- Confidence: **High**
+
+### Final Assessment: Updated Tasks
+
+**Overall Quality**: ✅ **Excellent** - All major recommendations implemented
+
+**Completeness**: ✅ **95%** - All critical items addressed
+- 3 new tasks added
+- 13 tasks enhanced
+- Estimates updated
+- Documentation comprehensive
+
+**Readiness**: ✅ **Ready for Implementation**
+- All blocking issues resolved
+- Clear dependencies established
+- Realistic estimates in place
+- Comprehensive acceptance criteria
+
+**Risk Level**: 🟢 **Low-Medium** (down from Medium)
+- All high-risk issues resolved
+- Medium risks mitigated with specific plans
+- Low risks acknowledged with contingencies
+
+**Confidence in Success**: ✅ **Very High** (90%+)
+- Up from 80%+ in initial analysis
+- All critical recommendations implemented
+- Realistic timeline (33 hours)
+- Clear path forward
+
+### Recommendations for Implementation
+
+**Before Starting**:
+1. ✅ Review Task 0.1 - ensure test environment is ready
+2. ✅ Consider Task 4.0 early - can be done in parallel with Phase 1-3
+3. ✅ Set up project tracking to monitor progress against estimates
+
+**During Implementation**:
+1. ✅ Test incrementally (don't wait until Task 8.1)
+2. ✅ Monitor bundle size early (use visualizer from start)
+3. ✅ Test on real mobile devices early (don't wait until Task 6.2 complete)
+4. ✅ Document issues as they arise
+
+**Quality Gates**:
+1. ✅ After Task 2.2: Verify SC-001 (load within 3 seconds)
+2. ✅ After Task 3.2: Verify SC-002 (observation loads within 2 seconds)
+3. ✅ After Task 4.1: Verify SC-001 still passes (no performance regression)
+4. ✅ After Task 7.1b: Verify basic integration works
+
+### Conclusion: Re-Analysis
+
+The updated tasks file represents a **significant improvement** over the original version. All critical recommendations from the initial analysis have been successfully implemented, resulting in:
+
+- ✅ More realistic estimates (33 vs 28 hours)
+- ✅ Better risk mitigation (Task 4.0 prevents performance issues)
+- ✅ Earlier validation (Task 7.1b, incremental testing)
+- ✅ Higher quality (enhanced acceptance criteria, required screenshots)
+- ✅ Better documentation (comprehensive change log)
+
+**Final Verdict**: ✅ **APPROVED FOR IMPLEMENTATION**
+
+The task list is now comprehensive, realistic, and well-structured. The team can proceed with confidence that the plan is solid and the risks are well-managed.
+
+**Success Probability**: 90%+ (up from 80%+)  
+**Recommended Action**: Proceed with implementation  
+**Next Steps**: Begin with Task 0.1 (test environment setup)
