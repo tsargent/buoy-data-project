@@ -29,6 +29,61 @@
         height: 100%;
         width: 100%;
       }
+
+      /* Popup styling */
+      .station-popup {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.5;
+      }
+
+      .station-popup h3 {
+        margin: 0 0 0.75rem 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.5rem;
+      }
+
+      .station-details p {
+        margin: 0.5rem 0;
+        font-size: 14px;
+        color: #34495e;
+      }
+
+      .station-details strong {
+        color: #2c3e50;
+        font-weight: 600;
+      }
+
+      .observation-data {
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #ecf0f1;
+      }
+
+      .loading-text {
+        font-size: 13px;
+        color: #7f8c8d;
+        font-style: italic;
+      }
+
+      /* Mobile optimization */
+      @media (max-width: 768px) {
+        .leaflet-popup-content {
+          max-width: 90vw !important;
+        }
+
+        .station-popup h3 {
+          font-size: 15px;
+        }
+
+        .station-details p {
+          font-size: 13px;
+        }
+      }
     </style>
   </head>
   <body>

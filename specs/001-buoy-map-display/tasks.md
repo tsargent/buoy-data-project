@@ -205,27 +205,27 @@ Fetch active stations from the API and display them as markers on the map.
 Make markers clickable and display basic station information in a popup.
 
 **Steps**:
-- [ ] Create `apps/web-demo/src/map/popup-builder.ts` with:
+- [x] Create `apps/web-demo/src/map/popup-builder.ts` with:
   - `buildStationPopup(station: Station): string` returning HTML
   - Basic HTML template with station ID and name
   - Loading placeholder for observation data
-- [ ] Update `marker-manager.ts` to:
+- [x] Update `marker-manager.ts` to:
   - Add click event listener to each marker
   - Bind popup with station info on click
   - Store station reference with each marker
-- [ ] Add CSS styling for popup:
+- [x] Add CSS styling for popup:
   - Readable font size
   - Proper spacing
   - Max width for mobile
-- [ ] Test popup opens on marker click
-- [ ] Ensure only one popup is open at a time (Leaflet default)
+- [x] Test popup opens on marker click
+- [x] Ensure only one popup is open at a time (Leaflet default)
 
 **Acceptance Criteria**:
-- [ ] Clicking a marker opens a popup
-- [ ] Popup shows station ID and name clearly
-- [ ] Popup is styled and readable
-- [ ] Only one popup is open at a time
-- [ ] Popup closes when clicking another marker or the map
+- [x] Clicking a marker opens a popup
+- [x] Popup shows station ID and name clearly
+- [x] Popup is styled and readable
+- [x] Only one popup is open at a time
+- [x] Popup closes when clicking another marker or the map
 
 **Related Requirements**: FR-003
 

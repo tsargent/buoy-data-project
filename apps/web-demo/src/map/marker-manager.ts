@@ -4,9 +4,10 @@
 
 import L from "leaflet";
 import type { Station } from "../types.js";
+import { buildStationPopup } from "./popup-builder.js";
 
-// Store marker references for later updates
-const markerMap = new Map<string, L.Marker>();
+// Store marker references and station data for later updates
+const markerMap = new Map<string, { marker: L.Marker; station: Station }>();
 
 /**
  * Add station markers to the map
@@ -35,11 +36,18 @@ export function addStationMarkers(map: L.Map, stations: Station[]): void {
       title: station.name,
     });
 
+    // Bind popup with station information
+    const popupContent = buildStationPopup(station);
+    marker.bindPopup(popupContent, {
+      maxWidth: 300,
+      minWidth: 250,
+    });
+
     // Add marker to map
     marker.addTo(map);
 
-    // Store marker reference
-    markerMap.set(station.id, marker);
+    // Store marker reference with station data
+    markerMap.set(station.id, { marker, station });
   });
 
   console.log(`Successfully added ${markerMap.size} markers to map`);
@@ -69,7 +77,7 @@ function isValidCoordinate(lat: number, lon: number): boolean {
  * Clear all markers from the map
  */
 export function clearMarkers(): void {
-  markerMap.forEach((marker) => {
+  markerMap.forEach(({ marker }) => {
     marker.remove();
   });
   markerMap.clear();
@@ -82,14 +90,27 @@ export function clearMarkers(): void {
  * @returns Marker instance or undefined
  */
 export function getMarker(stationId: string): L.Marker | undefined {
-  return markerMap.get(stationId);
+  return markerMap.get(stationId)?.marker;
+}
+
+/**
+ * Get station data by station ID
+ *
+ * @param stationId - Station ID
+ * @returns Station data or undefined
+ */
+export function getStation(stationId: string): Station | undefined {
+  return markerMap.get(stationId)?.station;
 }
 
 /**
  * Get all markers
  *
- * @returns Map of station IDs to markers
+ * @returns Map of station IDs to marker/station pairs
  */
-export function getAllMarkers(): Map<string, L.Marker> {
+export function getAllMarkers(): Map<
+  string,
+  { marker: L.Marker; station: Station }
+> {
   return markerMap;
 }
