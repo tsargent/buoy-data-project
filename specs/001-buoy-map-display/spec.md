@@ -10,6 +10,7 @@
 ### Session 2025-11-15
 
 - Q: What specific data format/API does the existing buoy data source provide for fetching station locations and observation data? → A: Fastify REST API endpoints
+- Q: Which mapping library or service should be used for the interactive map display? → A: Leaflet with OpenStreetMap
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -111,7 +112,7 @@ Users want to filter the map view to show only buoys that are currently reportin
 - The existing Fastify REST API endpoints for stations and observations (in apps/server) will remain available and stable
 - Users have modern web browsers with JavaScript enabled
 - The web application will be integrated with the existing system infrastructure
-- Map data tiles and mapping services are accessible
+- Leaflet with OpenStreetMap will be used for map rendering and tile services
 - The current 5 active stations will be sufficient for initial testing and demonstration
 - Time zones will be displayed consistently for all users
 - The web app will be accessible without user authentication requirements
