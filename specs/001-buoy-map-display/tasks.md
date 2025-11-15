@@ -163,31 +163,31 @@ Set up the basic Leaflet map with OpenStreetMap tiles, zoom controls, and pan fu
 Fetch active stations from the API and display them as markers on the map.
 
 **Steps**:
-- [ ] Create `apps/web-demo/src/map/marker-manager.ts` with:
+- [x] Create `apps/web-demo/src/map/marker-manager.ts` with:
   - `addStationMarkers(map: L.Map, stations: Station[]): void`
   - Function to create marker at lat/lng
   - Store marker references for later updates
-- [ ] Create `apps/web-demo/src/ui/loading.ts` with:
+- [x] Create `apps/web-demo/src/ui/loading.ts` with:
   - `showLoading(message: string): void`
   - `hideLoading(): void`
   - Simple spinner/overlay implementation
-- [ ] Update `src/main.ts` to:
+- [x] Update `src/main.ts` to:
   - Show loading indicator
   - Call `getStations()` with high limit (e.g., 1000)
   - Pass stations to `addStationMarkers()`
   - Hide loading indicator
   - Handle errors with `alert()` (temporary)
-- [ ] Add basic marker styling (default blue pins for now)
-- [ ] Test with existing 5 stations in database
+- [x] Add basic marker styling (default blue pins for now)
+- [x] Test with existing 5 stations in database
 
 **Acceptance Criteria**:
-- [ ] All active stations appear as markers on map
-- [ ] Markers are positioned at correct lat/lng coordinates
-- [ ] Loading indicator shows while fetching data
-- [ ] Error message displays if API request fails
-- [ ] Handles empty station list gracefully (shows "No stations available" message)
-- [ ] Page loads within 3 seconds (SC-001)
-- [ ] Database has test data before starting (dependency on Task 0.1)
+- [x] All active stations appear as markers on map
+- [x] Markers are positioned at correct lat/lng coordinates
+- [x] Loading indicator shows while fetching data
+- [x] Error message displays if API request fails
+- [x] Handles empty station list gracefully (shows "No stations available" message)
+- [x] Page loads within 3 seconds (SC-001)
+- [x] Database has test data before starting (dependency on Task 0.1)
 
 **Related Requirements**: FR-001, FR-002, FR-010, SC-001
 
