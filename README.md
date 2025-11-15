@@ -1,5 +1,7 @@
 # Buoy Sonification Project
 
+[![CI](https://github.com/tsargent/buoy-data-project/actions/workflows/ci.yml/badge.svg)](https://github.com/tsargent/buoy-data-project/actions/workflows/ci.yml)
+
 Transform real-time and historical NOAA buoy observations into reliable, well-structured APIs and derived sonification events for exploratory auditory analytics.
 
 ## 🏗️ Architecture

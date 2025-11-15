@@ -6,6 +6,12 @@ import { env } from "./env.js";
 import stations from "./routes/stations.js";
 import observations from "./routes/observations.js";
 import { createError, ErrorCode, type ErrorResponse } from "../lib/errors.js";
+import {
+  register,
+  httpRequestCounter,
+  httpRequestDuration,
+} from "../lib/metrics.js";
+import "./types.js"; // Augment FastifyRequest
 
 export async function buildApp() {
   const app = Fastify({
@@ -15,6 +21,25 @@ export async function buildApp() {
   });
   await app.register(cors, { origin: true });
   await app.register(fastifyJwt, { secret: env.JWT_SECRET });
+
+  // Metrics middleware - track request count and duration
+  app.addHook("onRequest", async (request) => {
+    request.requestStartTime = Date.now();
+  });
+
+  app.addHook("onResponse", async (request, reply) => {
+    const duration =
+      (Date.now() - (request.requestStartTime || Date.now())) / 1000;
+    const route = request.routeOptions.url || request.url;
+    const method = request.method;
+    const statusCode = reply.statusCode.toString();
+
+    httpRequestCounter.inc({ method, route, status_code: statusCode });
+    httpRequestDuration.observe(
+      { method, route, status_code: statusCode },
+      duration
+    );
+  });
 
   // Global error handler
   app.setErrorHandler((error: FastifyError, request, reply) => {
@@ -56,6 +81,9 @@ export async function buildApp() {
 
     return reply.code(error.statusCode || 500).send(errorResponse);
   });
+
+  // Metrics endpoint
+  app.get("/metrics", async () => register.metrics());
 
   app.get("/health", () => ({ status: "ok" }));
   await app.register(stations, { prefix: "/stations" });

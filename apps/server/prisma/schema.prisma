@@ -29,5 +29,7 @@ model Observation {
   pressureHpa  Float?
   createdAt    DateTime @default(now())
   station      Station  @relation(fields: [stationId], references: [id])
+  
+  @@unique([stationId, observedAt])
   @@index([stationId, observedAt])
 }

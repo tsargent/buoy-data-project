@@ -9,6 +9,7 @@ import {
   ObservationQuerySchema,
   ObservationParamsSchema,
 } from "../../lib/validation.js";
+import { observationsQueriedCounter } from "../../lib/metrics.js";
 
 const plugin: FastifyPluginAsync = async (app) => {
   app.get("/by-station/:stationId", (req, reply) => {
@@ -60,6 +61,8 @@ const plugin: FastifyPluginAsync = async (app) => {
           { stationId, count: rows.length },
           "Observations retrieved"
         );
+        // Track domain metric
+        observationsQueriedCounter.inc({ station_id: stationId }, rows.length);
         return rows.reverse();
       });
   });
