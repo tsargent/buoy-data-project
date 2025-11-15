@@ -3,6 +3,7 @@
  */
 
 import L from "leaflet";
+import "leaflet.markercluster";
 import type { Station, Observation } from "../types.js";
 import { DataFreshness, FRESHNESS_COLORS } from "../types.js";
 import { buildStationPopup, buildObservationError } from "./popup-builder.js";
@@ -11,6 +12,9 @@ import { CACHE_CONFIG } from "../config.js";
 
 // Store marker references and station data for later updates
 const markerMap = new Map<string, { marker: L.Marker; station: Station }>();
+
+// Store marker cluster group
+let markerClusterGroup: L.MarkerClusterGroup | null = null;
 
 // Observation cache: stationId -> {observation, timestamp}
 const observationCache = new Map<
@@ -81,7 +85,7 @@ function getMarkerColor(
 }
 
 /**
- * Add station markers to the map
+ * Add station markers to the map with clustering
  *
  * @param map - Leaflet Map instance
  * @param stations - Array of station data
@@ -89,12 +93,24 @@ function getMarkerColor(
 export function addStationMarkers(map: L.Map, stations: Station[]): void {
   console.log(`Adding ${stations.length} station markers to map`);
 
-  // Clear existing markers
+  // Clear existing markers and cluster group
   clearMarkers();
 
-  let filteredCount = 0;
+  // Create marker cluster group if it doesn't exist
+  if (!markerClusterGroup) {
+    markerClusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 60, // Cluster markers within 60 pixels
+      spiderfyOnMaxZoom: true, // Expand clusters at max zoom
+      showCoverageOnHover: false, // Don't show cluster coverage on hover
+      zoomToBoundsOnClick: true, // Zoom to cluster bounds on click
+      disableClusteringAtZoom: 10, // Show individual markers at zoom 10+
+    });
+  }
 
-  // Validate and add markers for each station
+  let filteredCount = 0;
+  const markers: L.Marker[] = [];
+
+  // Validate and create markers for each station
   stations.forEach((station) => {
     // Validate coordinates
     if (!isValidCoordinate(station.lat, station.lon)) {
@@ -136,15 +152,21 @@ export function addStationMarkers(map: L.Map, stations: Station[]): void {
       void fetchAndUpdateObservation(station.id, marker);
     });
 
-    // Add marker to map
-    marker.addTo(map);
-
     // Store marker reference with station data
     markerMap.set(station.id, { marker, station });
+
+    // Add to markers array
+    markers.push(marker);
   });
 
+  // Add all markers to cluster group at once
+  markerClusterGroup.addLayers(markers);
+
+  // Add cluster group to map
+  map.addLayer(markerClusterGroup);
+
   console.log(
-    `Successfully added ${markerMap.size} markers to map (filtered ${filteredCount} stale stations)`
+    `Successfully added ${markerMap.size} markers to map with clustering (filtered ${filteredCount} stale stations)`
   );
 }
 
@@ -172,6 +194,12 @@ function isValidCoordinate(lat: number, lon: number): boolean {
  * Clear all markers from the map
  */
 export function clearMarkers(): void {
+  // Clear marker cluster group if it exists
+  if (markerClusterGroup) {
+    markerClusterGroup.clearLayers();
+  }
+
+  // Clear individual marker references
   markerMap.forEach(({ marker }) => {
     marker.remove();
   });
