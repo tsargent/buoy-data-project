@@ -37,6 +37,7 @@ A small TypeScript backend that ingests NOAA buoy data, stores it in Postgres, p
 - Connect to `/stream` or a WebSocket endpoint.
 - Receive normalized buoy readings.
 - Use a predictable event schema.
+- See `docs/AUDIO_CLIENTS.md` for supported client environments (WebAudio, ChucK, Max, SuperCollider, etc.), transports, and mapping guidance.
 
 ## 4. Functional Requirements
 
