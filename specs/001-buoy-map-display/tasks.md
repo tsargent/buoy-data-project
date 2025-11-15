@@ -345,21 +345,21 @@ Color-code markers based on data freshness: green (<6hr), yellow (6-24hr), gray 
 Extend the stations API endpoint to include the timestamp of the latest observation for each station. This prevents N+1 query problem in the client.
 
 **Steps**:
-- [ ] Update `apps/server/src/routes/stations.ts`:
+- [x] Update `apps/server/src/routes/stations.ts`:
   - Modify the GET `/` endpoint to join with observations table
   - Add Prisma query to get `MAX(observedAt)` for each station
   - Include `lastObservationAt` field in response
-- [ ] Update response type to include optional `lastObservationAt?: string`
-- [ ] Test endpoint returns correct lastObservationAt timestamps
-- [ ] Verify performance: query should be efficient with proper indexing
-- [ ] Update API contract documentation in plan.md
+- [x] Update response type to include optional `lastObservationAt?: string`
+- [x] Test endpoint returns correct lastObservationAt timestamps
+- [x] Verify performance: query should be efficient with proper indexing
+- [x] Update API contract documentation in plan.md
 
 **Acceptance Criteria**:
-- [ ] GET `/stations` returns `lastObservationAt` for each station
-- [ ] Field is null/undefined if station has no observations
-- [ ] Query is performant (uses database index on observedAt)
-- [ ] Existing functionality is not broken
-- [ ] Response time remains under 1 second for 50 stations
+- [x] GET `/stations` returns `lastObservationAt` for each station
+- [x] Field is null/undefined if station has no observations
+- [x] Query is performant (uses database index on observedAt)
+- [x] Existing functionality is not broken
+- [x] Response time remains under 1 second for 50 stations
 
 **Related Requirements**: FR-013 (enables efficient implementation)
 
