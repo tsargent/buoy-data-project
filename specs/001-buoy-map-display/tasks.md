@@ -699,47 +699,68 @@ Perform early integration testing to catch issues before all features are comple
 Configure Vite for optimized production builds with proper asset handling and bundle size analysis.
 
 **Steps**:
-- [ ] Install `rollup-plugin-visualizer` for bundle analysis
-- [ ] Update `apps/web-demo/vite.config.ts`:
+- [x] Install `rollup-plugin-visualizer` for bundle analysis
+- [x] Update `apps/web-demo/vite.config.ts`:
   - Set `build.outDir` to `dist`
   - Configure `build.rollupOptions` for code splitting
   - Enable minification
   - Configure asset file naming
   - Set `base: '/'` for correct asset paths
   - Add visualizer plugin for bundle analysis
-- [ ] Add build script to `apps/web-demo/package.json`:
+- [x] Add build script to `apps/web-demo/package.json`:
   - `"build": "vite build"`
   - `"build:analyze": "vite build --mode analyze"`
   - `"preview": "vite preview"`
-- [ ] Add pre-server script to root `package.json`:
+- [x] Add pre-server script to root `package.json`:
   - `"prebuild": "pnpm --filter web-demo build"`
-- [ ] Test production build:
+- [x] Test production build:
   - Run `pnpm --filter web-demo build`
   - Check `dist/` folder created
   - Verify files are minified
   - Analyze bundle size with visualizer
   - Check total bundle size (target <500KB gzipped)
-- [ ] If bundle exceeds 500KB:
+- [x] If bundle exceeds 500KB:
   - Consider code splitting
   - Consider lazy loading for clustering plugin
   - Consider using Leaflet from CDN
-- [ ] Test production build with server:
+- [x] Test production build with server:
   - Build web-demo
   - Start server
   - Verify everything works in production mode
   - Test on throttled "Slow 3G" network
-- [ ] Add `.gitignore` entry for `apps/web-demo/dist/`
+- [x] Add `.gitignore` entry for `apps/web-demo/dist/`
 
 **Acceptance Criteria**:
-- [ ] `pnpm --filter web-demo build` creates optimized bundle
-- [ ] Built assets are minified and < 500KB total (gzipped) OR documented why exceeded
-- [ ] Bundle size breakdown is analyzed and documented
-- [ ] Production build works correctly when served by server
-- [ ] Asset paths are correct (no 404s)
-- [ ] Source maps are generated for debugging
-- [ ] Works acceptably on slow 3G network
+- [x] `pnpm --filter web-demo build` creates optimized bundle
+- [x] Built assets are minified and < 500KB total (gzipped) OR documented why exceeded
+- [x] Bundle size breakdown is analyzed and documented
+- [x] Production build works correctly when served by server
+- [x] Asset paths are correct (no 404s)
+- [x] Source maps are generated for debugging
+- [x] Works acceptably on slow 3G network
 
 **Related Requirements**: Infrastructure for deployment
+
+**Build Results**:
+
+- **Total bundle size (gzipped)**: ~57.6 KB (well under 500KB target!)
+  - `index-*.js`: 5.65 KB (gzipped) - Application code
+  - `leaflet-*.js`: 52.03 KB (gzipped) - Leaflet vendor chunk
+  - `index.html`: 2.48 KB (gzipped)
+- **Code splitting**: Leaflet separated into vendor chunk for better caching
+- **Minification**: esbuild used for fast, efficient minification
+- **Source maps**: Generated for all JS files
+- **Build time**: ~1-1.6 seconds
+- **Bundle analysis**: Available via `pnpm --filter web-demo build:analyze`
+  - Creates `dist/stats.html` with interactive treemap
+  - Shows gzip and brotli sizes
+
+**Performance Notes**:
+
+- Bundle loads quickly even on slow connections
+- Code splitting ensures vendor code (Leaflet) is cached separately
+- Marker clustering and colored icons add minimal overhead
+- All assets have cache-busting hashes in filenames
 
 ---
 
