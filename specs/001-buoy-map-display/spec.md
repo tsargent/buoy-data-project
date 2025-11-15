@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "A web app that displays the locations of the buoys on a map"
 
+## Clarifications
+
+### Session 2025-11-15
+
+- Q: What specific data format/API does the existing buoy data source provide for fetching station locations and observation data? → A: Fastify REST API endpoints
+- Q: Which mapping library or service should be used for the interactive map display? → A: Leaflet with OpenStreetMap
+- Q: What determines if a buoy station is "active" for display purposes? → A: Station has active status flag AND recent observation within 24 hours
+- Q: Should the application implement security measures despite no authentication requirement? → A: Basic protections: rate limiting and input validation only
+- Q: How should the UI visually communicate different data states to users? → A: Use color-coded markers: green for fresh data (<6hr), yellow for aging data (6-24hr), gray for API errors
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - View All Buoy Locations on Map (Priority: P1)
@@ -57,7 +67,9 @@ Users want to filter the map view to show only buoys that are currently reportin
 
 ### Edge Cases
 
-- What happens when a buoy station has no recent observations (data is stale or missing)?
+- Stations with stale data (no observations within 24 hours) should not be displayed on the map even if they have active status flag
+- Stations with observations between 6-24 hours old should be displayed with yellow markers to indicate aging data
+- Stations experiencing API errors or connectivity issues should be displayed with gray markers to indicate unreliable status
 - How does the system handle stations with invalid or out-of-bounds coordinates?
 - What happens when the user's device has no internet connection or the API is unavailable?
 - How does the map perform when displaying a large number of buoy stations (50+)?
@@ -80,10 +92,16 @@ Users want to filter the map view to show only buoys that are currently reportin
 - **FR-010**: System MUST provide visual feedback during data loading
 - **FR-011**: System MUST handle data source errors gracefully with user-friendly error messages
 - **FR-012**: System MUST work on modern desktop and mobile web browsers
+- **FR-013**: System MUST use color-coded markers to visually communicate data freshness: green for observations less than 6 hours old, yellow for observations between 6-24 hours old, and gray for stations with API errors or connectivity issues
+
+### Non-Functional Requirements
+
+- **NFR-001**: System MUST implement rate limiting on API requests to prevent abuse and ensure service stability
+- **NFR-002**: System MUST validate all user inputs and coordinate bounds to prevent malformed requests
 
 ### Key Entities
 
-- **Buoy Station**: Represents a NOAA buoy location with unique ID, name, latitude, longitude, and active status
+- **Buoy Station**: Represents a NOAA buoy location with unique ID, name, latitude, longitude, and active status. A station is considered "active" when it has both an active status flag in the database AND has reported observations within the last 24 hours.
 - **Observation**: Time-series measurement data from a buoy including optional sensor readings (wave height in meters, wind speed in m/s, wind direction in degrees, water temperature in Celsius, atmospheric pressure in hPa) and observation timestamp
 - **Map View**: Geographic visualization component that displays buoy locations with zoom/pan controls and coordinate-based positioning
 
@@ -102,10 +120,10 @@ Users want to filter the map view to show only buoys that are currently reportin
 
 ## Assumptions
 
-- The existing data source for stations and observations will remain available and stable
+- The existing Fastify REST API endpoints for stations and observations (in apps/server) will remain available and stable
 - Users have modern web browsers with JavaScript enabled
 - The web application will be integrated with the existing system infrastructure
-- Map data tiles and mapping services are accessible
+- Leaflet with OpenStreetMap will be used for map rendering and tile services
 - The current 5 active stations will be sufficient for initial testing and demonstration
 - Time zones will be displayed consistently for all users
 - The web app will be accessible without user authentication requirements
