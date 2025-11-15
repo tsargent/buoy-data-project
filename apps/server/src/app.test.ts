@@ -34,7 +34,7 @@ describe("API Routes Integration Tests", () => {
   });
 
   describe("GET /stations", () => {
-    it("should return valid response shape (200 or 500 if DB unavailable)", async () => {
+    it("should return paginated response with data and meta", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/stations",
@@ -44,8 +44,18 @@ describe("API Routes Integration Tests", () => {
       expect([200, 500]).toContain(response.statusCode);
 
       if (response.statusCode === 200) {
-        const data = response.json() as unknown[];
-        expect(Array.isArray(data)).toBe(true);
+        const json = response.json() as {
+          data: unknown[];
+          meta: { page: number; limit: number; total: number };
+        };
+        expect(json).toHaveProperty("data");
+        expect(json).toHaveProperty("meta");
+        expect(Array.isArray(json.data)).toBe(true);
+        expect(json.meta).toHaveProperty("page");
+        expect(json.meta).toHaveProperty("limit");
+        expect(json.meta).toHaveProperty("total");
+        expect(json.meta.page).toBe(1);
+        expect(json.meta.limit).toBe(100);
       } else {
         // Error response should follow constitution shape
         const data = response.json() as {
@@ -54,6 +64,23 @@ describe("API Routes Integration Tests", () => {
         expect(data).toHaveProperty("error");
         expect(data.error).toHaveProperty("code");
         expect(data.error).toHaveProperty("message");
+      }
+    });
+
+    it("should accept page and limit query parameters", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/stations?page=2&limit=50",
+      });
+
+      expect([200, 500]).toContain(response.statusCode);
+
+      if (response.statusCode === 200) {
+        const json = response.json() as {
+          meta: { page: number; limit: number };
+        };
+        expect(json.meta.page).toBe(2);
+        expect(json.meta.limit).toBe(50);
       }
     });
   });
@@ -76,29 +103,46 @@ describe("API Routes Integration Tests", () => {
   });
 
   describe("GET /observations/by-station/:stationId", () => {
-    it("should accept request and return valid response shape", async () => {
+    it("should return paginated response with data and meta", async () => {
       const response = await app.inject({
         method: "GET",
         url: "/observations/by-station/test-station",
       });
 
       expect([200, 500]).toContain(response.statusCode);
-      const data = response.json() as unknown[] | { error: unknown };
 
       if (response.statusCode === 200) {
-        expect(Array.isArray(data)).toBe(true);
+        const json = response.json() as {
+          data: unknown[];
+          meta: { page: number; limit: number; total: number };
+        };
+        expect(json).toHaveProperty("data");
+        expect(json).toHaveProperty("meta");
+        expect(Array.isArray(json.data)).toBe(true);
+        expect(json.meta).toHaveProperty("page");
+        expect(json.meta).toHaveProperty("limit");
+        expect(json.meta).toHaveProperty("total");
       } else {
+        const data = response.json() as { error: unknown };
         expect(data).toHaveProperty("error");
       }
     });
 
-    it("should accept limit query parameter", async () => {
+    it("should accept page and limit query parameters", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/observations/by-station/test-station?limit=50",
+        url: "/observations/by-station/test-station?page=2&limit=50",
       });
 
       expect([200, 500]).toContain(response.statusCode);
+
+      if (response.statusCode === 200) {
+        const json = response.json() as {
+          meta: { page: number; limit: number };
+        };
+        expect(json.meta.page).toBe(2);
+        expect(json.meta.limit).toBe(50);
+      }
     });
 
     it("should accept since query parameter", async () => {
@@ -108,6 +152,20 @@ describe("API Routes Integration Tests", () => {
       });
 
       expect([200, 500]).toContain(response.statusCode);
+    });
+
+    it("should enforce max limit of 500", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/observations/by-station/test-station?limit=1000",
+      });
+
+      expect([200, 500]).toContain(response.statusCode);
+
+      if (response.statusCode === 200) {
+        const json = response.json() as { meta: { limit: number } };
+        expect(json.meta.limit).toBe(500);
+      }
     });
 
     it("should reject invalid limit parameter", async () => {

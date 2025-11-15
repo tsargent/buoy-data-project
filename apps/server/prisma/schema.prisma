@@ -30,6 +30,6 @@ model Observation {
   createdAt    DateTime @default(now())
   station      Station  @relation(fields: [stationId], references: [id])
   
-  @@unique([stationId, observedAt])
+  @@unique([stationId, observedAt], name: "stationId_observedAt")
   @@index([stationId, observedAt])
 }

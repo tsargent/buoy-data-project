@@ -8,11 +8,16 @@ import {
 import {
   ObservationQuerySchema,
   ObservationParamsSchema,
+  type PaginatedResponse,
 } from "../../lib/validation.js";
 import { observationsQueriedCounter } from "../../lib/metrics.js";
+import type { Observation } from "@prisma/client";
 
 const plugin: FastifyPluginAsync = async (app) => {
-  app.get("/by-station/:stationId", (req, reply) => {
+  app.get<{
+    Params: { stationId: string };
+    Querystring: { page?: string; limit?: string; since?: string };
+  }>("/by-station/:stationId", async (req, reply) => {
     // Validate params
     const paramsResult = ObservationParamsSchema.safeParse(req.params);
     if (!paramsResult.success) {
@@ -40,28 +45,51 @@ const plugin: FastifyPluginAsync = async (app) => {
     }
 
     const { stationId } = paramsResult.data;
-    const { limit, since } = queryResult.data;
+    const { page, limit, since } = queryResult.data;
+    const skip = (page - 1) * limit;
 
     // Log business context
-    req.log.info({ stationId, limit, since }, "Fetching station observations");
+    req.log.info(
+      { stationId, page, limit, since },
+      "Fetching station observations"
+    );
 
     const where = {
       stationId,
       ...(since ? { observedAt: { gt: new Date(since) } } : {}),
     };
 
-    const queryPromise = prisma.observation.findMany({
-      where,
-      orderBy: { observedAt: "desc" },
-      take: limit,
-    });
+    const [observations, total] = await Promise.all([
+      prisma.observation.findMany({
+        where,
+        orderBy: { observedAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.observation.count({ where }),
+    ]);
 
-    return queryPromise.then((rows) => {
-      req.log.info({ stationId, count: rows.length }, "Observations retrieved");
-      // Track domain metric
-      observationsQueriedCounter.inc({ station_id: stationId }, rows.length);
-      return rows.reverse();
-    });
+    req.log.info(
+      { stationId, count: observations.length, total },
+      "Observations retrieved"
+    );
+
+    // Track domain metric
+    observationsQueriedCounter.inc(
+      { station_id: stationId },
+      observations.length
+    );
+
+    const response: PaginatedResponse<Observation> = {
+      data: observations.reverse(),
+      meta: {
+        page,
+        limit,
+        total,
+      },
+    };
+
+    return response;
   });
 };
 

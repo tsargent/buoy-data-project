@@ -137,14 +137,43 @@ pnpm -F @app/server test
 ### Stations
 
 - `GET /stations` - List all active stations
+  - Query params:
+    - `page` (optional): Page number, default 1
+    - `limit` (optional): Results per page, default 100, max 500
+  - Response:
+
+    ```json
+    {
+      "data": [ ...stations... ],
+      "meta": {
+        "page": 1,
+        "limit": 100,
+        "total": 250
+      }
+    }
+    ```
+
 - `GET /stations/:id` - Get station by ID
 
 ### Observations
 
 - `GET /observations/by-station/:stationId` - Get observations for a station
   - Query params:
-    - `limit` (optional): Max results, default 100, capped at 500
+    - `page` (optional): Page number, default 1
+    - `limit` (optional): Results per page, default 100, max 500
     - `since` (optional): ISO 8601 date, filter observations after this time
+  - Response:
+
+    ```json
+    {
+      "data": [ ...observations... ],
+      "meta": {
+        "page": 1,
+        "limit": 100,
+        "total": 1500
+      }
+    }
+    ```
 
 ### Error Responses
 
