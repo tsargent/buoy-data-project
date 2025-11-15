@@ -12,6 +12,7 @@
 - Q: What specific data format/API does the existing buoy data source provide for fetching station locations and observation data? → A: Fastify REST API endpoints
 - Q: Which mapping library or service should be used for the interactive map display? → A: Leaflet with OpenStreetMap
 - Q: What determines if a buoy station is "active" for display purposes? → A: Station has active status flag AND recent observation within 24 hours
+- Q: Should the application implement security measures despite no authentication requirement? → A: Basic protections: rate limiting and input validation only
 
 ## User Scenarios & Testing _(mandatory)_
 
@@ -88,6 +89,11 @@ Users want to filter the map view to show only buoys that are currently reportin
 - **FR-010**: System MUST provide visual feedback during data loading
 - **FR-011**: System MUST handle data source errors gracefully with user-friendly error messages
 - **FR-012**: System MUST work on modern desktop and mobile web browsers
+
+### Non-Functional Requirements
+
+- **NFR-001**: System MUST implement rate limiting on API requests to prevent abuse and ensure service stability
+- **NFR-002**: System MUST validate all user inputs and coordinate bounds to prevent malformed requests
 
 ### Key Entities
 
