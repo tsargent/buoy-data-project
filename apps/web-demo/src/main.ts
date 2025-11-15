@@ -6,6 +6,8 @@ import { initMap } from "./map/map-manager.js";
 import { addStationMarkers } from "./map/marker-manager.js";
 import { showLoading, hideLoading } from "./ui/loading.js";
 import { showError, hideError, resetRetryCount } from "./ui/error-display.js";
+// Uncomment the next line to enable mock data for performance testing:
+// import { mixMockStations } from "./utils/mock-data.js";
 import type L from "leaflet";
 
 console.log("Buoy Station Map - Web Demo Application");
@@ -44,6 +46,12 @@ async function loadStations(map: L.Map): Promise<void> {
 
     console.log(`Fetched ${response.data.length} stations`);
 
+    // For performance testing with 100+ stations, uncomment the following:
+    // const stationsToDisplay = mixMockStations(response.data, 95); // Add 95 mock stations to 5 real ones
+    // console.log(`Testing with ${stationsToDisplay.length} total stations (${response.data.length} real + 95 mock)`);
+    // addStationMarkers(map, stationsToDisplay);
+    // return;
+
     // Check if any stations were returned
     if (response.data.length === 0) {
       hideLoading();
@@ -81,6 +89,27 @@ async function loadStations(map: L.Map): Promise<void> {
 // Initialize map when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM Content Loaded");
+
+  // Add keyboard accessibility
+  document.addEventListener("keydown", (event) => {
+    // Escape key closes popups and error banners
+    if (event.key === "Escape") {
+      // Close error banner if visible
+      const errorBanner = document.querySelector(".error-banner");
+      if (
+        errorBanner &&
+        errorBanner.classList.contains("error-banner-visible")
+      ) {
+        hideError();
+        return;
+      }
+
+      // Close popup if open (Leaflet handles this automatically when clicking outside)
+      if (window.map) {
+        window.map.closePopup();
+      }
+    }
+  });
 
   // Wrap async logic in immediately invoked function
   void (async () => {
