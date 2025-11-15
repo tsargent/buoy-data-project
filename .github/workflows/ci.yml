@@ -64,7 +64,7 @@ jobs:
         run: pnpm -r run build
 
       - name: Run migrations
-        run: pnpm -F @app/server prisma:migrate
+        run: pnpm -F @app/server prisma:migrate:deploy
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
 
