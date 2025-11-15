@@ -5,6 +5,12 @@
 **Status**: Draft  
 **Input**: User description: "A web app that displays the locations of the buoys on a map"
 
+## Clarifications
+
+### Session 2025-11-15
+
+- Q: What specific data format/API does the existing buoy data source provide for fetching station locations and observation data? → A: Fastify REST API endpoints
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - View All Buoy Locations on Map (Priority: P1)
@@ -102,7 +108,7 @@ Users want to filter the map view to show only buoys that are currently reportin
 
 ## Assumptions
 
-- The existing data source for stations and observations will remain available and stable
+- The existing Fastify REST API endpoints for stations and observations (in apps/server) will remain available and stable
 - Users have modern web browsers with JavaScript enabled
 - The web application will be integrated with the existing system infrastructure
 - Map data tiles and mapping services are accessible
