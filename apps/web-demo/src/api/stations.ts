@@ -14,7 +14,7 @@ import type { Station, PaginatedResponse } from "../types.js";
  */
 export async function getStations(
   page = 1,
-  limit = 1000,
+  limit = 1000
 ): Promise<PaginatedResponse<Station>> {
   const endpoint = `/v1/stations?page=${page}&limit=${limit}`;
   return fetchApi<PaginatedResponse<Station>>(endpoint);

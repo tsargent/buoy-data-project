@@ -26,6 +26,135 @@ export class ApiRequestError extends Error {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * Parse error response from API
+ */
+async function parseErrorResponse(
+  response: Response
+): Promise<ApiError | null> {
+  try {
+    return (await response.json()) as ApiError;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create error from non-OK response
+ */
+async function createResponseError(
+  response: Response
+): Promise<ApiRequestError> {
+  const errorData = await parseErrorResponse(response);
+  const message = errorData?.message || response.statusText || "Request failed";
+
+  return new ApiRequestError(
+    message,
+    response.status,
+    errorData?.code,
+    errorData?.details
+  );
+}
+
+/**
+ * Parse JSON response with error handling
+ */
+async function parseJsonResponse<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch (parseError) {
+    throw new ApiRequestError(
+      "Invalid response from server",
+      response.status,
+      "PARSE_ERROR",
+      parseError
+    );
+  }
+}
+
+/**
+ * Make a single fetch request with timeout
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (fetchError) {
+    clearTimeout(timeoutId);
+
+    if (fetchError instanceof Error && fetchError.name === "AbortError") {
+      throw new ApiRequestError(
+        "Request timed out, please try again",
+        undefined,
+        "TIMEOUT"
+      );
+    }
+
+    throw fetchError;
+  }
+}
+
+/**
+ * Check if error should be retried
+ */
+function shouldRetryError(
+  error: unknown,
+  attempt: number,
+  maxRetries: number
+): boolean {
+  if (!(error instanceof ApiRequestError)) {
+    return true;
+  }
+
+  // Don't retry on 4xx errors except 429 (rate limit)
+  if (error.status && error.status >= 400 && error.status < 500) {
+    return error.status === 429;
+  }
+
+  // Don't retry timeout on last attempt
+  if (error.code === "TIMEOUT" && attempt === maxRetries) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Handle retry logic with exponential backoff
+ */
+async function handleRetry(
+  error: unknown,
+  attempt: number,
+  maxRetries: number
+): Promise<Error> {
+  const lastError = error instanceof Error ? error : new Error(String(error));
+
+  if (!shouldRetryError(error, attempt, maxRetries)) {
+    throw error;
+  }
+
+  if (attempt < maxRetries) {
+    const backoffMs = Math.pow(2, attempt - 1) * 1000;
+    console.warn(
+      `API request failed (attempt ${attempt}/${maxRetries}), retrying in ${backoffMs}ms...`,
+      lastError
+    );
+    await sleep(backoffMs);
+  }
+
+  return lastError;
+}
+
+/**
  * Generic fetch wrapper with timeout, retry logic, and error handling
  *
  * @param endpoint - API endpoint path (e.g., '/stations')
@@ -44,95 +173,15 @@ export async function fetchApi<T>(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Create AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+      const response = await fetchWithTimeout(url, options);
 
-      try {
-        const response = await fetch(url, {
-          ...options,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        // Handle non-OK responses
-        if (!response.ok) {
-          let errorData: ApiError | null = null;
-
-          try {
-            errorData = (await response.json()) as ApiError;
-          } catch {
-            // If response is not JSON, use status text
-          }
-
-          const message =
-            errorData?.message || response.statusText || "Request failed";
-
-          throw new ApiRequestError(
-            message,
-            response.status,
-            errorData?.code,
-            errorData?.details
-          );
-        }
-
-        // Parse JSON response
-        try {
-          const data = (await response.json()) as T;
-          return data;
-        } catch (parseError) {
-          throw new ApiRequestError(
-            "Invalid response from server",
-            response.status,
-            "PARSE_ERROR",
-            parseError
-          );
-        }
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-
-        // Handle abort/timeout
-        if (fetchError instanceof Error && fetchError.name === "AbortError") {
-          throw new ApiRequestError(
-            "Request timed out, please try again",
-            undefined,
-            "TIMEOUT"
-          );
-        }
-
-        throw fetchError;
+      if (!response.ok) {
+        throw await createResponseError(response);
       }
+
+      return await parseJsonResponse<T>(response);
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      // Don't retry on specific errors
-      if (error instanceof ApiRequestError) {
-        // Don't retry on 4xx errors (client errors) except 429 (rate limit)
-        if (error.status && error.status >= 400 && error.status < 500) {
-          if (error.status !== 429) {
-            throw error;
-          }
-        }
-
-        // Don't retry on timeout for the last attempt
-        if (error.code === "TIMEOUT" && attempt === maxRetries) {
-          throw error;
-        }
-      }
-
-      // Don't retry if this was the last attempt
-      if (attempt === maxRetries) {
-        break;
-      }
-
-      // Exponential backoff: 1s, 2s, 4s
-      const backoffMs = Math.pow(2, attempt - 1) * 1000;
-      console.warn(
-        `API request failed (attempt ${attempt}/${maxRetries}), retrying in ${backoffMs}ms...`,
-        lastError
-      );
-      await sleep(backoffMs);
+      lastError = await handleRetry(error, attempt, maxRetries);
     }
   }
 
