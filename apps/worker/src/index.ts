@@ -43,7 +43,9 @@ const worker = new Worker(
       const rawData = await fetchStationData(stationId);
       const observations = parseNDBCFile(rawData);
 
-      void job.log(`Parsed ${observations.length} observations for ${stationId}`);
+      void job.log(
+        `Parsed ${observations.length} observations for ${stationId}`
+      );
 
       // Persist to database (upsert to avoid duplicates)
       let inserted = 0;
@@ -81,7 +83,9 @@ const worker = new Worker(
           inserted++;
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
-          void job.log(`Skipping duplicate or invalid observation: ${errorMsg}`);
+          void job.log(
+            `Skipping duplicate or invalid observation: ${errorMsg}`
+          );
         }
       }
 
@@ -141,5 +145,6 @@ setInterval(() => {
   void scheduleIngestion();
 }, env.INGEST_INTERVAL_MS);
 
-console.log(`✅ Worker running (ingestion interval: ${env.INGEST_INTERVAL_MS}ms)`);
-
+console.log(
+  `✅ Worker running (ingestion interval: ${env.INGEST_INTERVAL_MS}ms)`
+);

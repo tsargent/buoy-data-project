@@ -40,7 +40,9 @@ export type NDBCObservation = z.infer<typeof NDBCObservationSchema>;
  * 2025 11 14 00 00  1.2  5.00  3.70 270 1013.2  12.5  13.1  11.2   99  180  8.5 10.2
  */
 export function parseNDBCFile(content: string): NDBCObservation[] {
-  const lines = content.split("\n").filter((line) => !line.startsWith("#") && line.trim());
+  const lines = content
+    .split("\n")
+    .filter((line) => !line.startsWith("#") && line.trim());
 
   return lines.slice(2).map((line) => {
     const parts = line.trim().split(/\s+/);
