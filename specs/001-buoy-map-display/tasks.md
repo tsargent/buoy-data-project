@@ -299,37 +299,37 @@ When a marker is clicked, fetch the latest observation data and display it in th
 Color-code markers based on data freshness: green (<6hr), yellow (6-24hr), gray (error/old). Requires server API to include lastObservationAt timestamp to avoid N+1 query problem.
 
 **Steps**:
-- [ ] **First**: Extend server API (if not already done in Task 4.0):
+- [x] **First**: Extend server API (if not already done in Task 4.0):
   - Modify `apps/server/src/routes/stations.ts` to include `lastObservationAt` in response
   - Add Prisma query to get latest observation timestamp for each station
   - Test API returns `lastObservationAt` field
-- [ ] Update `marker-manager.ts` with:
+- [x] Update `marker-manager.ts` with:
   - Function to calculate data age from observation timestamp
   - `getMarkerColor(lastObservationTime: Date | null): 'green' | 'yellow' | 'gray'`
   - Custom Leaflet icon creation for each color (create 3 reusable icons)
   - Filter out stations with no observations in last 24 hours
-- [ ] Create marker icons:
+- [x] Create marker icons:
   - Use Leaflet's `L.divIcon` with colored circles
   - Create 3 icon instances (green, yellow, gray) and reuse them
   - Or use `L.icon` with custom SVG pins
-- [ ] Add map legend:
+- [x] Add map legend:
   - Create legend overlay in bottom-right corner
   - Show color meanings: "Fresh (<6hr)", "Aging (6-24hr)", "Stale (>24hr)"
   - Style legend with CSS
-- [ ] Update marker creation to use colored icons based on `lastObservationAt`
+- [x] Update marker creation to use colored icons based on `lastObservationAt`
 - [ ] Test with various timestamps to verify color logic
 - [ ] Verify page still loads within 3 seconds (SC-001)
 
 **Acceptance Criteria**:
-- [ ] Markers are color-coded based on data freshness
-- [ ] Green markers: observations < 6 hours old
-- [ ] Yellow markers: observations 6-24 hours old
-- [ ] Gray markers: no recent observations or API errors
-- [ ] Stations with no observations in 24 hours are filtered out and don't appear on map
-- [ ] Legend is visible and explains color coding clearly
+- [x] Markers are color-coded based on data freshness
+- [x] Green markers: observations < 6 hours old
+- [x] Yellow markers: observations 6-24 hours old
+- [x] Gray markers: no recent observations or API errors
+- [x] Stations with no observations in 24 hours are filtered out and don't appear on map
+- [x] Legend is visible and explains color coding clearly
 - [ ] Colors update correctly when page is refreshed
 - [ ] Page loads within 3 seconds (no performance degradation)
-- [ ] Only 3 icon objects created (not N icons for N stations)
+- [x] Only 3 icon objects created (not N icons for N stations)
 
 **Related Requirements**: FR-013
 

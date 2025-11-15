@@ -4,6 +4,7 @@
 
 import L from "leaflet";
 import type { Station, Observation } from "../types.js";
+import { DataFreshness, FRESHNESS_COLORS } from "../types.js";
 import { buildStationPopup, buildObservationError } from "./popup-builder.js";
 import { getLatestObservation } from "../api/observations.js";
 import { CACHE_CONFIG } from "../config.js";
@@ -17,6 +18,68 @@ const observationCache = new Map<
   { observation: Observation | null; timestamp: number }
 >();
 
+// Create reusable colored marker icons (one per color)
+const markerIcons = {
+  green: createColoredIcon(FRESHNESS_COLORS[DataFreshness.FRESH]),
+  yellow: createColoredIcon(FRESHNESS_COLORS[DataFreshness.AGING]),
+  gray: createColoredIcon(FRESHNESS_COLORS[DataFreshness.STALE]),
+};
+
+/**
+ * Create a colored marker icon using Leaflet's divIcon
+ *
+ * @param color - Color for the marker (green, yellow, gray)
+ * @returns Leaflet DivIcon instance
+ */
+function createColoredIcon(color: string): L.DivIcon {
+  return L.divIcon({
+    className: "custom-marker",
+    html: `<div class="marker-pin" style="background-color: ${color};"></div>`,
+    iconSize: [30, 40],
+    iconAnchor: [15, 40],
+    popupAnchor: [0, -40],
+  });
+}
+
+/**
+ * Calculate data age in hours from a timestamp
+ *
+ * @param timestamp - ISO timestamp string or null
+ * @returns Age in hours, or Infinity if null
+ */
+function calculateDataAge(timestamp: string | null | undefined): number {
+  if (!timestamp) {
+    return Infinity;
+  }
+
+  const observedAt = new Date(timestamp);
+  const now = new Date();
+  const ageMs = now.getTime() - observedAt.getTime();
+  const ageHours = ageMs / (1000 * 60 * 60);
+
+  return ageHours;
+}
+
+/**
+ * Determine marker color based on data freshness
+ *
+ * @param lastObservationTime - Last observation timestamp or null
+ * @returns Color category: 'green', 'yellow', or 'gray'
+ */
+function getMarkerColor(
+  lastObservationTime: string | null | undefined
+): "green" | "yellow" | "gray" {
+  const ageHours = calculateDataAge(lastObservationTime);
+
+  if (ageHours < 6) {
+    return "green"; // Fresh data < 6 hours
+  } else if (ageHours < 24) {
+    return "yellow"; // Aging data 6-24 hours
+  } else {
+    return "gray"; // Stale data > 24 hours or no data
+  }
+}
+
 /**
  * Add station markers to the map
  *
@@ -29,6 +92,8 @@ export function addStationMarkers(map: L.Map, stations: Station[]): void {
   // Clear existing markers
   clearMarkers();
 
+  let filteredCount = 0;
+
   // Validate and add markers for each station
   stations.forEach((station) => {
     // Validate coordinates
@@ -39,9 +104,24 @@ export function addStationMarkers(map: L.Map, stations: Station[]): void {
       return;
     }
 
-    // Create marker at station location
+    // Filter out stations with no observations in last 24 hours
+    const ageHours = calculateDataAge(station.lastObservationAt);
+    if (ageHours >= 24) {
+      console.log(
+        `Filtering out station ${station.id} with data age ${ageHours.toFixed(1)} hours`
+      );
+      filteredCount++;
+      return;
+    }
+
+    // Determine marker color based on data freshness
+    const color = getMarkerColor(station.lastObservationAt);
+    const icon = markerIcons[color];
+
+    // Create marker at station location with colored icon
     const marker = L.marker([station.lat, station.lon], {
       title: station.name,
+      icon,
     });
 
     // Bind popup with station information
@@ -63,7 +143,9 @@ export function addStationMarkers(map: L.Map, stations: Station[]): void {
     markerMap.set(station.id, { marker, station });
   });
 
-  console.log(`Successfully added ${markerMap.size} markers to map`);
+  console.log(
+    `Successfully added ${markerMap.size} markers to map (filtered ${filteredCount} stale stations)`
+  );
 }
 
 /**
