@@ -1,9 +1,11 @@
 import { getStations, getStation } from "./api/stations.js";
 import { getLatestObservation } from "./api/observations.js";
+import { ApiRequestError } from "./api/client.js";
 import { API_BASE_URL } from "./config.js";
 import { initMap } from "./map/map-manager.js";
 import { addStationMarkers } from "./map/marker-manager.js";
 import { showLoading, hideLoading } from "./ui/loading.js";
+import { showError, hideError, resetRetryCount } from "./ui/error-display.js";
 import type L from "leaflet";
 
 console.log("Buoy Station Map - Web Demo Application");
@@ -45,8 +47,9 @@ async function loadStations(map: L.Map): Promise<void> {
     // Check if any stations were returned
     if (response.data.length === 0) {
       hideLoading();
-      alert(
-        "No stations available. Please check that the database has been seeded."
+      showError(
+        "No stations available. Please check that the database has been seeded.",
+        false
       );
       return;
     }
@@ -55,14 +58,23 @@ async function loadStations(map: L.Map): Promise<void> {
     addStationMarkers(map, response.data);
 
     hideLoading();
+    hideError(); // Clear any previous errors
+    resetRetryCount(); // Reset retry counter on success
     console.log("Stations loaded successfully");
   } catch (error) {
     hideLoading();
     console.error("Failed to load stations:", error);
-    alert(
-      "Failed to load station data. Please ensure the API server is running at " +
-        API_BASE_URL
-    );
+
+    // Get user-friendly error message
+    const errorMessage =
+      error instanceof ApiRequestError
+        ? error.getUserMessage()
+        : "Failed to load station data. Please try again.";
+
+    // Show error with retry button
+    showError(errorMessage, true, () => {
+      void loadStations(map);
+    });
   }
 }
 
@@ -86,9 +98,15 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       console.error("Failed to initialize application:", error);
       hideLoading();
-      alert(
-        "Failed to initialize the map application. Please check the console for details."
-      );
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to initialize the map application. Please refresh the page.";
+
+      showError(errorMessage, true, () => {
+        window.location.reload();
+      });
     }
   })();
 });

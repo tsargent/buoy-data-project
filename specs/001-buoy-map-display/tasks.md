@@ -377,24 +377,24 @@ Extend the stations API endpoint to include the timestamp of the latest observat
 Add robust error handling for network issues, API failures, and invalid data.
 
 **Steps**:
-- [ ] Create `apps/web-demo/src/ui/error-display.ts` with:
+- [x] Create `apps/web-demo/src/ui/error-display.ts` with:
   - `showError(message: string, allowRetry?: boolean): void`
   - Error overlay/banner with user-friendly messages
   - Optional retry button with retry counter
   - `hideError(): void` function
-- [ ] Update `api/client.ts` to handle:
+- [x] Update `api/client.ts` to handle:
   - Network offline errors → "Unable to connect to the server"
   - Timeout errors → "Request timed out, please try again"
   - 4xx errors → "Invalid request"
   - 5xx errors → "Server error, please try again later"
   - JSON parse errors → "Invalid response from server"
   - Limit retries to maximum 3 attempts
-- [ ] Update station loading error handling:
+- [x] Update station loading error handling:
   - Show error banner instead of alert()
   - Add retry button that refetches stations
   - Disable retry button after 3 failed attempts
   - Log technical details to console for debugging
-- [ ] Add validation for station coordinates:
+- [x] Add validation for station coordinates:
   - Check latitude is between -90 and 90
   - Check longitude is between -180 and 180
   - Log warning for invalid coordinates but don't crash
@@ -406,12 +406,12 @@ Add robust error handling for network issues, API failures, and invalid data.
   - Test retry limit (should stop after 3 attempts)
 
 **Acceptance Criteria**:
-- [ ] Offline state shows "Unable to connect" message
-- [ ] API errors show user-friendly messages (no technical jargon)
-- [ ] Stations with invalid coordinates are logged but don't break the app
-- [ ] User can retry failed requests via UI button (max 3 times)
-- [ ] Retry button disables after 3 failed attempts
-- [ ] All error messages follow SC-006 (meaningful to non-technical users)
+- [x] Offline state shows "Unable to connect" message
+- [x] API errors show user-friendly messages (no technical jargon)
+- [x] Stations with invalid coordinates are logged but don't break the app
+- [x] User can retry failed requests via UI button (max 3 times)
+- [x] Retry button disables after 3 failed attempts
+- [x] All error messages follow SC-006 (meaningful to non-technical users)
 
 **Related Requirements**: FR-010, FR-011, SC-006
 
