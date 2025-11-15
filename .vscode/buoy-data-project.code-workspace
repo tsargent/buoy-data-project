@@ -1,0 +1,36 @@
+{
+  "folders": [
+    {
+      "name": "🌊 Buoy Data Project",
+      "path": "."
+    },
+    {
+      "name": "🖥️  Server",
+      "path": "apps/server"
+    },
+    {
+      "name": "⚙️  Worker",
+      "path": "apps/worker"
+    },
+    {
+      "name": "📦 Shared",
+      "path": "packages/shared"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "github.copilot",
+      "github.copilot-chat",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "prisma.prisma",
+      "ms-azuretools.vscode-docker"
+    ]
+  }
+}

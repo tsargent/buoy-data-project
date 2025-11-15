@@ -1,0 +1,209 @@
+{
+  "Fastify Route Handler": {
+    "prefix": "fastify-route",
+    "body": [
+      "app.${1|get,post,put,delete,patch|}<{ ${2:Params: { id: string }} }}>(",
+      "  '${3:/path}',",
+      "  async (req, reply) => {",
+      "    ${4:// Handler logic}",
+      "    $0",
+      "  }",
+      ");"
+    ],
+    "description": "Create a typed Fastify route handler"
+  },
+  "Fastify Error Response": {
+    "prefix": "fastify-error",
+    "body": [
+      "return reply.code(${1:404}).send({",
+      "  error: '${2:Not found}',",
+      "  details: { ${3:key: value} }",
+      "});"
+    ],
+    "description": "Return error response from Fastify"
+  },
+  "Prisma Query": {
+    "prefix": "prisma-query",
+    "body": [
+      "const ${1:result} = await prisma.${2:model}.${3|findMany,findUnique,findFirst,create,update,delete|}({",
+      "  ${4:where: { id }}",
+      "});"
+    ],
+    "description": "Prisma database query"
+  },
+  "Prisma Transaction": {
+    "prefix": "prisma-transaction",
+    "body": [
+      "await prisma.\\$transaction(async (tx) => {",
+      "  ${1:// Transaction operations}",
+      "  $0",
+      "});"
+    ],
+    "description": "Prisma transaction"
+  },
+  "Zod Schema": {
+    "prefix": "zod-schema",
+    "body": [
+      "export const ${1:Name}Schema = z.object({",
+      "  ${2:field}: z.${3|string,number,boolean,date|}()${4:.optional()}${5:.nullable()},",
+      "  $0",
+      "});",
+      "",
+      "export type ${1:Name} = z.infer<typeof ${1:Name}Schema>;"
+    ],
+    "description": "Create Zod schema with TypeScript type"
+  },
+  "Zod Validation": {
+    "prefix": "zod-validate",
+    "body": [
+      "const result = ${1:Schema}.safeParse(${2:data});",
+      "if (!result.success) {",
+      "  return reply.code(400).send({ error: result.error });",
+      "}",
+      "const ${3:validated} = result.data;"
+    ],
+    "description": "Validate data with Zod schema"
+  },
+  "Try-Catch with Logging": {
+    "prefix": "try-log",
+    "body": [
+      "try {",
+      "  ${1:// Code that might fail}",
+      "  $0",
+      "} catch (error) {",
+      "  app.log.error({ error, ${2:context} }, '${3:Operation failed}');",
+      "  throw error;",
+      "}"
+    ],
+    "description": "Try-catch block with error logging"
+  },
+  "Pino Logger": {
+    "prefix": "log",
+    "body": [
+      "app.log.${1|info,error,warn,debug|}({ ${2:data} }, '${3:message}');"
+    ],
+    "description": "Pino structured log"
+  },
+  "BullMQ Job Processor": {
+    "prefix": "bullmq-processor",
+    "body": [
+      "worker.process('${1:jobName}', async (job) => {",
+      "  const { ${2:data} } = job.data;",
+      "  ",
+      "  try {",
+      "    ${3:// Process job}",
+      "    $0",
+      "    ",
+      "    return { success: true };",
+      "  } catch (error) {",
+      "    logger.error({ error, jobId: job.id }, 'Job failed');",
+      "    throw error;",
+      "  }",
+      "});"
+    ],
+    "description": "BullMQ job processor"
+  },
+  "BullMQ Add Job": {
+    "prefix": "bullmq-add",
+    "body": [
+      "await queue.add('${1:jobName}', {",
+      "  ${2:data}",
+      "}, {",
+      "  attempts: ${3:3},",
+      "  backoff: {",
+      "    type: 'exponential',",
+      "    delay: ${4:1000}",
+      "  }",
+      "});"
+    ],
+    "description": "Add job to BullMQ queue"
+  },
+  "Async Function with Type": {
+    "prefix": "async-fn",
+    "body": [
+      "export async function ${1:functionName}(${2:param}: ${3:Type}): Promise<${4:ReturnType}> {",
+      "  ${5:// Implementation}",
+      "  $0",
+      "}"
+    ],
+    "description": "Typed async function"
+  },
+  "SSE Response": {
+    "prefix": "sse-response",
+    "body": [
+      "reply.raw.writeHead(200, {",
+      "  'Content-Type': 'text/event-stream',",
+      "  'Cache-Control': 'no-cache',",
+      "  'Connection': 'keep-alive',",
+      "});",
+      "",
+      "const sendEvent = (data: ${1:any}) => {",
+      "  reply.raw.write(`event: ${2:observation}\\n`);",
+      "  reply.raw.write(`data: \\${JSON.stringify(data)}\\n\\n`);",
+      "};",
+      "",
+      "$0"
+    ],
+    "description": "Server-Sent Events response setup"
+  },
+  "Import with .js Extension": {
+    "prefix": "import-js",
+    "body": [
+      "import { ${1:export} } from '${2:./path}.js';"
+    ],
+    "description": "ES module import with .js extension"
+  },
+  "Environment Variable": {
+    "prefix": "env-var",
+    "body": [
+      "const ${1:VAR_NAME} = process.env.${1:VAR_NAME};",
+      "if (!${1:VAR_NAME}) {",
+      "  throw new Error('${1:VAR_NAME} is required');",
+      "}"
+    ],
+    "description": "Get and validate environment variable"
+  },
+  "Test Suite (Vitest)": {
+    "prefix": "test-suite",
+    "body": [
+      "import { describe, it, expect, beforeEach, afterEach } from 'vitest';",
+      "",
+      "describe('${1:Component}', () => {",
+      "  beforeEach(() => {",
+      "    ${2:// Setup}",
+      "  });",
+      "",
+      "  afterEach(() => {",
+      "    ${3:// Cleanup}",
+      "  });",
+      "",
+      "  it('should ${4:do something}', async () => {",
+      "    ${5:// Arrange}",
+      "    $0",
+      "    ",
+      "    ${6:// Act}",
+      "    ",
+      "    ${7:// Assert}",
+      "    expect(${8:result}).toBe(${9:expected});",
+      "  });",
+      "});"
+    ],
+    "description": "Vitest test suite"
+  },
+  "API Test (Fastify)": {
+    "prefix": "test-api",
+    "body": [
+      "it('should ${1:description}', async () => {",
+      "  const response = await app.inject({",
+      "    method: '${2|GET,POST,PUT,DELETE,PATCH|}',",
+      "    url: '${3:/path}',",
+      "    ${4:body: { data }}",
+      "  });",
+      "",
+      "  expect(response.statusCode).toBe(${5:200});",
+      "  expect(response.json()).toEqual(${6:expected});",
+      "});"
+    ],
+    "description": "Fastify API test"
+  }
+}

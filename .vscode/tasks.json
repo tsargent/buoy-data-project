@@ -1,0 +1,117 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install Dependencies",
+      "type": "shell",
+      "command": "pnpm install",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Build All",
+      "type": "shell",
+      "command": "pnpm build",
+      "problemMatcher": ["$tsc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Start Server",
+      "type": "shell",
+      "command": "pnpm -F @app/server dev",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev"
+      }
+    },
+    {
+      "label": "Start Worker",
+      "type": "shell",
+      "command": "pnpm -F worker dev",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev"
+      }
+    },
+    {
+      "label": "Start Server + Worker",
+      "dependsOn": ["Start Server", "Start Worker"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Start Services",
+      "type": "shell",
+      "command": "docker compose up -d",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Docker: Stop Services",
+      "type": "shell",
+      "command": "docker compose down",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: View Logs",
+      "type": "shell",
+      "command": "docker compose logs -f",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Prisma: Generate Client",
+      "type": "shell",
+      "command": "pnpm -F @app/server prisma:generate",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Prisma: Run Migration",
+      "type": "shell",
+      "command": "pnpm -F @app/server prisma:migrate",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Prisma: Open Studio",
+      "type": "shell",
+      "command": "pnpm -F @app/server prisma:studio",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Format Code",
+      "type": "shell",
+      "command": "pnpm format",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint Code",
+      "type": "shell",
+      "command": "pnpm lint",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "pnpm test",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Clean Build Artifacts",
+      "type": "shell",
+      "command": "rm -rf apps/*/dist packages/*/dist",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+### Health Check
+GET http://localhost:3000/health
+
+###
+
+### List All Stations
+GET http://localhost:3000/stations
+
+###
+
+### Get Specific Station
+GET http://localhost:3000/stations/44009
+
+###
+
+### Get Observations for Station
+# With default limit
+GET http://localhost:3000/observations/by-station/44009
+
+###
+
+### Get Observations with Limit
+GET http://localhost:3000/observations/by-station/44009?limit=50
+
+###
+
+### Get Observations Since Date
+GET http://localhost:3000/observations/by-station/44009?since=2024-01-01T00:00:00Z
+
+###
+
+### Get Observations with Limit and Since
+GET http://localhost:3000/observations/by-station/44009?limit=20&since=2024-01-15T00:00:00Z
+
+###
+
+### Real-Time Stream (SSE)
+# Note: This will keep the connection open
+# Press Ctrl+C to disconnect
+GET http://localhost:3000/stream
+
+###
+
+### Test Invalid Station ID
+GET http://localhost:3000/stations/invalid-id
+
+###
+
+### Test Missing Station
+GET http://localhost:3000/stations/99999
+
+###

@@ -1,0 +1,42 @@
+{
+  "recommendations": [
+    // GitHub Copilot
+    "github.copilot",
+    "github.copilot-chat",
+    
+    // TypeScript & JavaScript
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "orta.vscode-twoslash-queries",
+    
+    // Database (Prisma)
+    "prisma.prisma",
+    
+    // Docker
+    "ms-azuretools.vscode-docker",
+    
+    // Git
+    "eamodio.gitlens",
+    
+    // REST Client (for API testing)
+    "humao.rest-client",
+    
+    // YAML (for docker-compose)
+    "redhat.vscode-yaml",
+    
+    // Todo Tree (for tracking TODOs in code)
+    "gruntfuggly.todo-tree",
+    
+    // Error Lens (inline error messages)
+    "usernamehw.errorlens",
+    
+    // Path Intellisense
+    "christian-kohler.path-intellisense",
+    
+    // Import Cost (show import sizes)
+    "wix.vscode-import-cost",
+    
+    // Better Comments
+    "aaron-bond.better-comments"
+  ]
+}
