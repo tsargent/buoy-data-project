@@ -1,6 +1,6 @@
 # PRD: Buoy Data Backend + Real-Time Sonification System
 
-## 1. Overview  
+## 1. Overview
 
 A small TypeScript backend that ingests NOAA buoy data, stores it in Postgres, processes it with a worker queue, and streams normalized events to an audio client in real time. Designed to demonstrate full-stack engineering skills with a creative twist.
 
@@ -55,7 +55,7 @@ A small TypeScript backend that ingests NOAA buoy data, stores it in Postgres, p
 
 - Server exposes SSE `(GET /stream)` or WebSocket (SSE by default).
 - Each event includes fields like:
-  
+
   ```ts
   {
     buoyId: string,
