@@ -7,6 +7,37 @@
 
 ## Task List
 
+### Phase 0: Test Environment Setup
+
+#### Task 0.1: Set up test environment and seed database
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 1 hour  
+**Dependencies**: None
+
+**Description**:
+Ensure the development environment has a working database with test data (stations and observations) before beginning feature implementation.
+
+**Steps**:
+- [ ] Verify PostgreSQL database is running
+- [ ] Verify Prisma schema is up to date: `pnpm --filter server prisma migrate dev`
+- [ ] Check if worker has run and populated data
+- [ ] If no data exists, run worker to fetch initial station and observation data
+- [ ] Verify at least 5 stations exist in database with active status
+- [ ] Verify each station has at least one recent observation
+- [ ] Document test data state in `specs/001-buoy-map-display/test-data.md`
+
+**Acceptance Criteria**:
+- [ ] Database is running and accessible
+- [ ] At least 5 active stations exist in database
+- [ ] Each station has observation data within last 7 days
+- [ ] Can query stations and observations via Prisma
+- [ ] Test data is documented
+
+**Related Requirements**: Foundation for all testing
+
+---
+
 ### Phase 1: Project Setup and Infrastructure
 
 #### Task 1.1: Initialize web-demo package
@@ -55,27 +86,31 @@ Create TypeScript types matching the API responses and build a reusable HTTP cli
 - [ ] Create `apps/web-demo/src/config.ts` with:
   - `API_BASE_URL` from environment or default to `http://localhost:3000`
   - Map configuration (default center, zoom)
+  - `REQUEST_TIMEOUT = 15000` (15 seconds)
 - [ ] Create `apps/web-demo/src/types.ts` with interfaces:
-  - `Station` matching `/stations` response
+  - `Station` matching `/stations` response (including `lastObservationAt?: string`)
   - `Observation` matching `/observations/by-station/:id` response
   - `PaginatedResponse<T>` for API wrapper
   - `ApiError` for error responses
 - [ ] Create `apps/web-demo/src/api/client.ts` with:
   - `fetchApi<T>()` wrapper around fetch with error handling
-  - Request timeout handling
+  - Request timeout handling (15 seconds with AbortController)
   - JSON parsing with type safety
+  - Retry logic (max 3 attempts with exponential backoff)
 - [ ] Create `apps/web-demo/src/api/stations.ts` with:
   - `getStations(page?: number, limit?: number): Promise<PaginatedResponse<Station>>`
   - `getStation(id: string): Promise<Station>`
 - [ ] Create `apps/web-demo/src/api/observations.ts` with:
   - `getLatestObservation(stationId: string): Promise<Observation | null>`
 - [ ] Add basic error logging to console
+- [ ] Test timeout behavior with delayed API response
 
 **Acceptance Criteria**:
 - [ ] TypeScript compiles without type errors
 - [ ] Can fetch stations list in browser console: `getStations()`
 - [ ] API errors are caught and typed correctly
-- [ ] Timeout errors are handled gracefully
+- [ ] Timeout errors (>15s) are handled gracefully
+- [ ] Retry logic works for transient failures (max 3 attempts)
 
 **Related Requirements**: FR-001, FR-004, FR-010, FR-011
 
@@ -96,14 +131,15 @@ Set up the basic Leaflet map with OpenStreetMap tiles, zoom controls, and pan fu
 - [ ] Add Leaflet CSS import to `index.html`
 - [ ] Create `apps/web-demo/src/map/map-manager.ts` with:
   - `initMap(containerId: string): L.Map` function
-  - OpenStreetMap tile layer configuration
+  - OpenStreetMap tile layer configuration with proper attribution
   - Initial view centered on US coasts (lat: 37.8, lng: -96, zoom: 4)
   - Zoom control configuration
   - Pan settings
 - [ ] Update `index.html` with map container div (`<div id="map"></div>`)
 - [ ] Add CSS for full-screen map layout
 - [ ] Update `src/main.ts` to call `initMap('map')` on DOMContentLoaded
-- [ ] Add layer control for map type selection (if multiple tile providers)
+- [ ] Add OSM attribution: "© OpenStreetMap contributors"
+- [ ] Consider adding fallback tile provider (e.g., CARTO) for redundancy
 
 **Acceptance Criteria**:
 - [ ] Map displays with OpenStreetMap tiles
@@ -111,6 +147,7 @@ Set up the basic Leaflet map with OpenStreetMap tiles, zoom controls, and pan fu
 - [ ] User can pan by clicking and dragging
 - [ ] Map fills the viewport and is responsive
 - [ ] No console errors or tile loading issues
+- [ ] OSM attribution is visible on map
 
 **Related Requirements**: FR-002, FR-008
 
@@ -146,9 +183,11 @@ Fetch active stations from the API and display them as markers on the map.
 **Acceptance Criteria**:
 - [ ] All active stations appear as markers on map
 - [ ] Markers are positioned at correct lat/lng coordinates
-- [ ] Loading indicator shows while fetching stations
+- [ ] Loading indicator shows while fetching data
 - [ ] Error message displays if API request fails
+- [ ] Handles empty station list gracefully (shows "No stations available" message)
 - [ ] Page loads within 3 seconds (SC-001)
+- [ ] Database has test data before starting (dependency on Task 0.1)
 
 **Related Requirements**: FR-001, FR-002, FR-010, SC-001
 
@@ -195,16 +234,18 @@ Make markers clickable and display basic station information in a popup.
 #### Task 3.2: Fetch and display latest observation data
 
 **Priority**: P1 (High)  
-**Estimate**: 3 hours  
+**Estimate**: 3.5 hours  
 **Dependencies**: Task 3.1
 
 **Description**:
-When a marker is clicked, fetch the latest observation data and display it in the popup with proper formatting.
+When a marker is clicked, fetch the latest observation data and display it in the popup with proper formatting. Includes simple caching to avoid redundant API calls.
 
 **Steps**:
 - [ ] Create `apps/web-demo/src/utils/date-formatter.ts` with:
-  - `formatTimestamp(isoString: string): string` 
-  - Human-readable format: "Nov 15, 2025 10:30 AM"
+  - `formatTimestamp(isoString: string): string`
+  - Use `toLocaleString()` for browser's locale
+  - Display timezone abbreviation (e.g., "PST", "EST")
+  - Human-readable format: "Nov 15, 2025 10:30 AM PST"
 - [ ] Create `apps/web-demo/src/utils/data-helpers.ts` with:
   - `formatValue(value: number | null, unit: string): string`
   - Returns "Not Available" for null values
@@ -219,10 +260,15 @@ When a marker is clicked, fetch the latest observation data and display it in th
     - Water Temperature (°C)
     - Air Pressure (hPa)
   - Use `formatValue()` for each sensor reading
-  - Display formatted timestamp
+  - Display formatted timestamp with timezone
+- [ ] Create simple observation cache:
+  - Use `Map<stationId, {observation: Observation, timestamp: number}>`
+  - Cache observations for 5 minutes
+  - Check cache before making API call
 - [ ] Update marker click handler to:
   - Show popup with station info + loading state
-  - Fetch latest observation: `getLatestObservation(stationId)`
+  - Check cache first for observation
+  - If not cached or stale, fetch: `getLatestObservation(stationId)`
   - Update popup with observation data
   - Handle case where no observations exist
 - [ ] Add error handling for observation fetch failures
@@ -231,9 +277,11 @@ When a marker is clicked, fetch the latest observation data and display it in th
 - [ ] Latest observation data appears in popup after clicking marker
 - [ ] All available sensor readings display with correct units
 - [ ] Missing/null sensor readings show "Not Available"
-- [ ] Timestamp is formatted: "Nov 15, 2025 10:30 AM"
+- [ ] Timestamp is formatted with locale and timezone: "Nov 15, 2025 10:30 AM PST"
 - [ ] Loading indicator shows while fetching observation
 - [ ] Observation loads within 2 seconds (SC-002)
+- [ ] Cached observations load instantly (no API call)
+- [ ] Cache expires after 5 minutes
 
 **Related Requirements**: FR-004, FR-005, FR-006, FR-007, SC-002, SC-007
 
@@ -244,42 +292,76 @@ When a marker is clicked, fetch the latest observation data and display it in th
 #### Task 4.1: Implement color-coded markers
 
 **Priority**: P1 (High)  
-**Estimate**: 2.5 hours  
-**Dependencies**: Task 3.2
+**Estimate**: 3.5 hours  
+**Dependencies**: Task 3.2, Task 4.0 (server API extension)
 
 **Description**:
-Color-code markers based on data freshness: green (<6hr), yellow (6-24hr), gray (error/old).
+Color-code markers based on data freshness: green (<6hr), yellow (6-24hr), gray (error/old). Requires server API to include lastObservationAt timestamp to avoid N+1 query problem.
 
 **Steps**:
+- [ ] **First**: Extend server API (if not already done in Task 4.0):
+  - Modify `apps/server/src/routes/stations.ts` to include `lastObservationAt` in response
+  - Add Prisma query to get latest observation timestamp for each station
+  - Test API returns `lastObservationAt` field
 - [ ] Update `marker-manager.ts` with:
   - Function to calculate data age from observation timestamp
   - `getMarkerColor(lastObservationTime: Date | null): 'green' | 'yellow' | 'gray'`
-  - Custom Leaflet icon creation for each color
+  - Custom Leaflet icon creation for each color (create 3 reusable icons)
   - Filter out stations with no observations in last 24 hours
-- [ ] Modify station fetching to also get latest observation timestamp
-  - Option A: Fetch latest observation for each station during initial load
-  - Option B: Add `lastObservationAt` field to station API response
-  - Choose Option A for now (no API changes needed)
 - [ ] Create marker icons:
   - Use Leaflet's `L.divIcon` with colored circles
+  - Create 3 icon instances (green, yellow, gray) and reuse them
   - Or use `L.icon` with custom SVG pins
 - [ ] Add map legend:
   - Create legend overlay in bottom-right corner
-  - Show color meanings: Green (Fresh <6hr), Yellow (Aging 6-24hr), Gray (Stale >24hr)
+  - Show color meanings: "Fresh (<6hr)", "Aging (6-24hr)", "Stale (>24hr)"
   - Style legend with CSS
-- [ ] Update marker creation to use colored icons
+- [ ] Update marker creation to use colored icons based on `lastObservationAt`
 - [ ] Test with various timestamps to verify color logic
+- [ ] Verify page still loads within 3 seconds (SC-001)
 
 **Acceptance Criteria**:
 - [ ] Markers are color-coded based on data freshness
 - [ ] Green markers: observations < 6 hours old
 - [ ] Yellow markers: observations 6-24 hours old
 - [ ] Gray markers: no recent observations or API errors
-- [ ] Stations with no observations in 24 hours don't appear on map
-- [ ] Legend is visible and explains color coding
-- [ ] Colors update correctly when data is refreshed
+- [ ] Stations with no observations in 24 hours are filtered out and don't appear on map
+- [ ] Legend is visible and explains color coding clearly
+- [ ] Colors update correctly when page is refreshed
+- [ ] Page loads within 3 seconds (no performance degradation)
+- [ ] Only 3 icon objects created (not N icons for N stations)
 
 **Related Requirements**: FR-013
+
+---
+
+#### Task 4.0: Extend server API with lastObservationAt (NEW)
+
+**Priority**: P0 (Blocker for Task 4.1)  
+**Estimate**: 1 hour  
+**Dependencies**: None (can be done in parallel with Phase 1-3)
+
+**Description**:
+Extend the stations API endpoint to include the timestamp of the latest observation for each station. This prevents N+1 query problem in the client.
+
+**Steps**:
+- [ ] Update `apps/server/src/routes/stations.ts`:
+  - Modify the GET `/` endpoint to join with observations table
+  - Add Prisma query to get `MAX(observedAt)` for each station
+  - Include `lastObservationAt` field in response
+- [ ] Update response type to include optional `lastObservationAt?: string`
+- [ ] Test endpoint returns correct lastObservationAt timestamps
+- [ ] Verify performance: query should be efficient with proper indexing
+- [ ] Update API contract documentation in plan.md
+
+**Acceptance Criteria**:
+- [ ] GET `/stations` returns `lastObservationAt` for each station
+- [ ] Field is null/undefined if station has no observations
+- [ ] Query is performant (uses database index on observedAt)
+- [ ] Existing functionality is not broken
+- [ ] Response time remains under 1 second for 50 stations
+
+**Related Requirements**: FR-013 (enables efficient implementation)
 
 ---
 
@@ -298,7 +380,7 @@ Add robust error handling for network issues, API failures, and invalid data.
 - [ ] Create `apps/web-demo/src/ui/error-display.ts` with:
   - `showError(message: string, allowRetry?: boolean): void`
   - Error overlay/banner with user-friendly messages
-  - Optional retry button
+  - Optional retry button with retry counter
   - `hideError(): void` function
 - [ ] Update `api/client.ts` to handle:
   - Network offline errors → "Unable to connect to the server"
@@ -306,9 +388,11 @@ Add robust error handling for network issues, API failures, and invalid data.
   - 4xx errors → "Invalid request"
   - 5xx errors → "Server error, please try again later"
   - JSON parse errors → "Invalid response from server"
+  - Limit retries to maximum 3 attempts
 - [ ] Update station loading error handling:
   - Show error banner instead of alert()
   - Add retry button that refetches stations
+  - Disable retry button after 3 failed attempts
   - Log technical details to console for debugging
 - [ ] Add validation for station coordinates:
   - Check latitude is between -90 and 90
@@ -319,12 +403,14 @@ Add robust error handling for network issues, API failures, and invalid data.
   - Stop server and try to load page
   - Use network throttling to simulate slow connection
   - Manually trigger API errors
+  - Test retry limit (should stop after 3 attempts)
 
 **Acceptance Criteria**:
 - [ ] Offline state shows "Unable to connect" message
 - [ ] API errors show user-friendly messages (no technical jargon)
 - [ ] Stations with invalid coordinates are logged but don't break the app
-- [ ] User can retry failed requests via UI button
+- [ ] User can retry failed requests via UI button (max 3 times)
+- [ ] Retry button disables after 3 failed attempts
 - [ ] All error messages follow SC-006 (meaningful to non-technical users)
 
 **Related Requirements**: FR-010, FR-011, SC-006
@@ -382,23 +468,27 @@ Add marker clustering and performance optimizations for large numbers of station
   - Create marker cluster group
   - Add markers to cluster group instead of directly to map
   - Configure cluster options (max zoom, radius)
-  - Keep color coding within clusters
+  - Test that colored icons work within clusters
+  - Consider cluster icon showing color distribution (optional enhancement)
 - [ ] Create mock data generator for testing:
   - Generate 100+ fake stations with random coordinates
+  - Include varied `lastObservationAt` timestamps for color testing
   - Use for performance testing
 - [ ] Test performance:
   - Load map with 100 stations
-  - Verify smooth zoom/pan operations
+  - Verify smooth zoom/pan operations (target 30+ FPS)
   - Check memory usage in browser dev tools
-- [ ] Add conditional clustering (only if >50 stations)
-- [ ] Optimize marker icon creation (reuse icons instead of creating new ones)
+  - Test on lower-end device or throttled CPU
+- [ ] Optimize marker icon creation (already done in Task 4.1 - verify 3 icons reused)
+- [ ] Consider always using clustering (simplifies code vs conditional logic)
 
 **Acceptance Criteria**:
 - [ ] Map remains responsive with 50+ markers
-- [ ] Zoom/pan operations are smooth (no lag)
+- [ ] Zoom/pan operations maintain 30+ FPS with 100 markers (measured in Chrome DevTools)
 - [ ] Marker clusters work correctly at different zoom levels
 - [ ] Clusters show count of contained markers
 - [ ] Individual markers visible when zoomed in
+- [ ] Colored markers work correctly within clusters
 - [ ] Meets SC-003 (responsive with 50+ markers)
 
 **Related Requirements**: FR-009, SC-003
@@ -408,11 +498,11 @@ Add marker clustering and performance optimizations for large numbers of station
 #### Task 6.2: Mobile responsiveness
 
 **Priority**: P1 (High)  
-**Estimate**: 2 hours  
+**Estimate**: 3 hours  
 **Dependencies**: Task 3.2
 
 **Description**:
-Ensure the map application works well on mobile devices with touch gestures.
+Ensure the map application works well on mobile devices with touch gestures. Includes testing on real devices.
 
 **Steps**:
 - [ ] Add viewport meta tag to `index.html`:
@@ -445,9 +535,13 @@ Ensure the map application works well on mobile devices with touch gestures.
 - [ ] No horizontal scrolling required
 - [ ] Popups fit on mobile screens
 - [ ] Controls are easy to tap (44x44px minimum)
+- [ ] Tested on at least one real iOS device (not just simulator)
+- [ ] Tested on at least one real Android device (not just emulator)
 - [ ] Meets SC-005 (works on mobile devices)
 
 **Related Requirements**: FR-012, SC-005
+
+**Note**: Budget extra time for mobile-specific bug fixes if issues are discovered.
 
 ---
 
@@ -533,29 +627,63 @@ Configure the existing Fastify server to serve the web-demo static files.
 - [ ] index.html is served for root path
 - [ ] Web app can make API calls to same origin
 - [ ] No CORS errors in browser console
+- [ ] API routes still work correctly (not overridden by static file serving)
+- [ ] 404 handling works for non-existent routes
 
 **Related Requirements**: Infrastructure for all FRs
+
+---
+
+#### Task 7.1b: Early integration smoke test (NEW)
+
+**Priority**: P1 (High)  
+**Estimate**: 0.5 hours  
+**Dependencies**: Task 7.1
+
+**Description**:
+Perform early integration testing to catch issues before all features are complete.
+
+**Steps**:
+- [ ] Build web-demo: `pnpm --filter web-demo build`
+- [ ] Start server: `pnpm --filter server dev`
+- [ ] Open browser to http://localhost:3000
+- [ ] Verify page loads and map displays
+- [ ] Verify API calls work (check network tab)
+- [ ] Test basic functionality (zoom, pan, click marker)
+- [ ] Document any integration issues found
+
+**Acceptance Criteria**:
+- [ ] Web app loads from server at http://localhost:3000
+- [ ] No 404 errors for static assets
+- [ ] API calls succeed
+- [ ] Basic map functionality works
+- [ ] Any issues are documented for fixing
+
+**Related Requirements**: Early validation of integration
 
 ---
 
 #### Task 7.2: Production build configuration
 
 **Priority**: P1 (High)  
-**Estimate**: 1 hour  
-**Dependencies**: Task 7.1
+**Estimate**: 1.5 hours  
+**Dependencies**: Task 7.1b
 
 **Description**:
-Configure Vite for optimized production builds with proper asset handling.
+Configure Vite for optimized production builds with proper asset handling and bundle size analysis.
 
 **Steps**:
+- [ ] Install `rollup-plugin-visualizer` for bundle analysis
 - [ ] Update `apps/web-demo/vite.config.ts`:
   - Set `build.outDir` to `dist`
   - Configure `build.rollupOptions` for code splitting
   - Enable minification
   - Configure asset file naming
   - Set `base: '/'` for correct asset paths
+  - Add visualizer plugin for bundle analysis
 - [ ] Add build script to `apps/web-demo/package.json`:
   - `"build": "vite build"`
+  - `"build:analyze": "vite build --mode analyze"`
   - `"preview": "vite preview"`
 - [ ] Add pre-server script to root `package.json`:
   - `"prebuild": "pnpm --filter web-demo build"`
@@ -563,19 +691,27 @@ Configure Vite for optimized production builds with proper asset handling.
   - Run `pnpm --filter web-demo build`
   - Check `dist/` folder created
   - Verify files are minified
-  - Check total bundle size
+  - Analyze bundle size with visualizer
+  - Check total bundle size (target <500KB gzipped)
+- [ ] If bundle exceeds 500KB:
+  - Consider code splitting
+  - Consider lazy loading for clustering plugin
+  - Consider using Leaflet from CDN
 - [ ] Test production build with server:
   - Build web-demo
   - Start server
   - Verify everything works in production mode
+  - Test on throttled "Slow 3G" network
 - [ ] Add `.gitignore` entry for `apps/web-demo/dist/`
 
 **Acceptance Criteria**:
 - [ ] `pnpm --filter web-demo build` creates optimized bundle
-- [ ] Built assets are minified and < 500KB total (gzipped)
+- [ ] Built assets are minified and < 500KB total (gzipped) OR documented why exceeded
+- [ ] Bundle size breakdown is analyzed and documented
 - [ ] Production build works correctly when served by server
 - [ ] Asset paths are correct (no 404s)
 - [ ] Source maps are generated for debugging
+- [ ] Works acceptably on slow 3G network
 
 **Related Requirements**: Infrastructure for deployment
 
@@ -586,11 +722,11 @@ Configure Vite for optimized production builds with proper asset handling.
 #### Task 8.1: Manual testing against success criteria
 
 **Priority**: P0 (Blocker)  
-**Estimate**: 2 hours  
+**Estimate**: 3 hours  
 **Dependencies**: All previous tasks
 
 **Description**:
-Systematically test all success criteria and document results.
+Systematically test all success criteria and document results. Note: Many of these should be tested incrementally as tasks complete.
 
 **Steps**:
 - [ ] Test SC-001: Stations load within 3 seconds
@@ -632,19 +768,22 @@ Systematically test all success criteria and document results.
 - [ ] Test results documented with actual measurements
 - [ ] Any issues or edge cases documented
 - [ ] Screenshots captured for visual verification
+- [ ] Pass/fail thresholds clearly defined for each SC
 
 **Related Requirements**: All success criteria
+
+**Note**: This task should be performed incrementally as features are completed, not just at the end. Test SC-001 after Task 2.2, SC-002 after Task 3.2, SC-003 after Task 6.1, etc.
 
 ---
 
 #### Task 8.2: Write user documentation
 
 **Priority**: P1 (High)  
-**Estimate**: 1.5 hours  
+**Estimate**: 2 hours  
 **Dependencies**: Task 7.2
 
 **Description**:
-Create comprehensive README documentation for the web-demo application.
+Create comprehensive README documentation for the web-demo application with screenshots.
 
 **Steps**:
 - [ ] Create `apps/web-demo/README.md` with sections:
@@ -653,7 +792,7 @@ Create comprehensive README documentation for the web-demo application.
   - Development setup:
     - Install dependencies
     - Start dev server
-    - Environment variables
+    - Environment variables (API_BASE_URL, etc.)
   - Building for production:
     - Build command
     - Output directory
@@ -661,23 +800,29 @@ Create comprehensive README documentation for the web-demo application.
   - Using the application:
     - How to view buoy locations
     - How to see station details
-    - Understanding marker colors
+    - Understanding marker colors (with legend explanation)
     - Legend explanation
   - Architecture overview:
     - Tech stack (Vite, TypeScript, Leaflet)
-    - Project structure
-    - API integration
+    - Project structure (folders and files)
+    - API integration approach
+    - Architecture diagram (optional)
   - Known limitations:
     - Browser compatibility
-    - Performance considerations
+    - Performance considerations (works best with <100 stations)
     - Required server availability
   - Troubleshooting:
     - Common issues and solutions
     - How to check if server is running
     - Clearing browser cache
+    - Debugging tips
 - [ ] Add code examples where helpful
-- [ ] Include screenshots (optional but nice)
-- [ ] Review README with fresh eyes
+- [ ] **Include screenshots** (required):
+  - Main map view with markers
+  - Station popup with observation data
+  - Map legend
+  - Mobile view
+- [ ] Review README with fresh eyes (or ask colleague to review)
 
 **Acceptance Criteria**:
 - [ ] README is complete and accurate
@@ -685,6 +830,8 @@ Create comprehensive README documentation for the web-demo application.
 - [ ] All commands are tested and work
 - [ ] Known limitations are documented
 - [ ] Troubleshooting section covers common issues
+- [ ] Screenshots are included and helpful
+- [ ] Environment variables are documented
 
 **Related Requirements**: Documentation requirement
 
@@ -746,32 +893,37 @@ Perform end-to-end integration testing with the full stack running.
 
 ## Task Summary
 
-**Total Tasks**: 17  
-**Estimated Time**: ~28 hours
+**Total Tasks**: 20 (3 new tasks added based on analysis)  
+**Estimated Time**: ~33 hours (updated from 28 hours)
 
 ### By Priority:
-- **P0 (Blocker)**: 7 tasks (~13.5 hours)
-- **P1 (High)**: 8 tasks (~13 hours)
-- **P2 (Medium)**: 2 tasks (~3 hours)
+- **P0 (Blocker)**: 9 tasks (~17 hours)
+- **P1 (High)**: 9 tasks (~14.5 hours)
+- **P2 (Medium)**: 2 tasks (~2 hours)
 
 ### By Phase:
+- **Phase 0**: 1 task (1 hour) - NEW
 - **Phase 1**: 2 tasks (2.5 hours)
 - **Phase 2**: 2 tasks (4.5 hours)
 - **Phase 3**: 2 tasks (4.5 hours)
-- **Phase 4**: 1 task (2.5 hours)
+- **Phase 4**: 2 tasks (4.5 hours) - Task 4.0 added, Task 4.1 extended
 - **Phase 5**: 2 tasks (3 hours)
-- **Phase 6**: 3 tasks (5.5 hours)
-- **Phase 7**: 2 tasks (2.5 hours)
-- **Phase 8**: 3 tasks (5.5 hours)
+- **Phase 6**: 3 tasks (7 hours) - Task 6.2 extended
+- **Phase 7**: 3 tasks (4 hours) - Task 7.1b added, Task 7.2 extended
+- **Phase 8**: 3 tasks (6.5 hours) - Tasks extended
 
-### Critical Path:
-1. Task 1.1 → Task 1.2 → Task 2.2 → Task 3.1 → Task 3.2 → Task 4.1 → Task 8.1
+### Critical Path (Updated):
+1. Task 0.1 → Task 1.1 → Task 1.2 → Task 2.2 → Task 3.1 → Task 3.2 → Task 4.0 → Task 4.1 → Task 8.1
+
+**Critical Path Duration**: ~18 hours (up from 14.5 hours)
 
 ### Parallel Work Opportunities:
 - Task 2.1 can be done in parallel with Task 1.2
+- Task 4.0 (API extension) can be done in parallel with Phase 1-3
 - Task 5.1 and 5.2 can be done while waiting for Phase 3
 - Task 6.1, 6.2, 6.3 can be done in any order after Phase 3
 - Task 7.1 can start as soon as Task 1.1 is complete
+- Testing (Task 8.1) should be performed incrementally, not just at end
 
 ## Notes
 
@@ -779,4 +931,41 @@ Perform end-to-end integration testing with the full stack running.
 - Tasks map directly to functional requirements (FR-XXX) and success criteria (SC-XXX)
 - Estimates assume familiarity with TypeScript and Leaflet
 - Some tasks can be split into smaller subtasks if needed
-- Testing should be performed continuously, not just in Phase 8
+- **IMPORTANT**: Testing should be performed continuously, not just in Phase 8
+- Task 0.1 must be completed first to ensure test data is available
+- Task 4.0 (API extension) should be done early to unblock Task 4.1
+- Mobile testing (Task 6.2) may reveal additional issues requiring extra time
+
+## Changes from Original Plan
+
+Based on analysis in `analysis.md`, the following changes were made:
+
+### New Tasks Added:
+1. **Task 0.1**: Set up test environment (1 hour) - Ensures database has test data
+2. **Task 4.0**: Extend server API with lastObservationAt (1 hour) - Prevents N+1 query problem
+3. **Task 7.1b**: Early integration smoke test (0.5 hours) - Catches issues earlier
+
+### Task Modifications:
+- **Task 1.2**: Added timeout value (15s), retry logic (max 3), and support for lastObservationAt
+- **Task 2.1**: Added OSM attribution requirement and fallback tile provider consideration
+- **Task 2.2**: Added acceptance criterion for empty station list handling
+- **Task 3.2**: Extended to 3.5 hours, added caching mechanism, timezone display
+- **Task 4.1**: Extended to 3.5 hours, added dependency on Task 4.0, optimized icon creation
+- **Task 5.1**: Added retry limit (max 3 attempts)
+- **Task 6.1**: Added FPS target (30+), simplified clustering approach
+- **Task 6.2**: Extended to 3 hours, added real device testing requirements
+- **Task 7.1**: Added acceptance criteria for API route precedence and 404 handling
+- **Task 7.2**: Extended to 1.5 hours, added bundle size analysis
+- **Task 8.1**: Extended to 3 hours, added note about incremental testing
+- **Task 8.2**: Extended to 2 hours, made screenshots required
+
+### Estimate Changes:
+- **Original Total**: 28 hours
+- **Updated Total**: 33 hours (+5 hours)
+- **Confidence Level**: High - accounts for discovered complexity and risk mitigation
+
+### Risk Mitigation:
+- Performance bottleneck in Task 4.1 resolved with Task 4.0 (API extension)
+- Late integration testing resolved with Task 7.1b (early smoke test)
+- Mobile complexity addressed with increased estimate and real device requirements
+- Bundle size concerns addressed with analysis tooling in Task 7.2
