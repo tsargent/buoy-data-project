@@ -25,6 +25,7 @@ ADRs follow the template:
 | [001](./001-prisma-orm.md)         | Use Prisma ORM for Database Access                        | Accepted | 2025-11-14 |
 | [002](./002-bullmq-job-queue.md)   | Use BullMQ for Background Job Processing                  | Accepted | 2025-11-14 |
 | [003](./003-server-sent-events.md) | Use Server-Sent Events (SSE) for Real-Time Data Streaming | Accepted | 2025-11-14 |
+| [004](./004-redis-pubsub.md)       | Use Redis Pub/Sub for Worker-to-Server Communication      | Accepted | 2024-11-16 |
 
 ## When to Create an ADR
 
