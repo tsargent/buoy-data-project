@@ -50,7 +50,13 @@ export async function buildApp() {
   // CORS configuration
   // TODO: In production, restrict origins to specific domains
   await app.register(cors, {
-    origin: process.env.NODE_ENV === "production" ? false : true,
+    origin:
+      process.env.NODE_ENV === "production"
+        ? false
+        : (origin, callback) => {
+            // Allow all origins in development, including file:// protocol
+            callback(null, true);
+          },
     credentials: true,
   });
 
