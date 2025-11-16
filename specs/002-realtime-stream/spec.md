@@ -2,7 +2,8 @@
 
 **Feature Branch**: `002-realtime-stream`  
 **Created**: 2025-11-15  
-**Status**: Draft  
+**Updated**: 2025-11-15  
+**Status**: Clarified  
 **Input**: User description: "Stream the buoy data to the browser in realtime. Read the PRD for more context"
 
 ## User Scenarios & Testing _(mandatory)_
@@ -50,7 +51,7 @@ Clients automatically reconnect when the connection is interrupted, and the serv
 
 1. **Given** a client is connected to the stream, **When** the client closes the browser tab, **Then** the server detects the disconnection and cleans up associated resources
 2. **Given** a client connection is established, **When** network connectivity is temporarily lost, **Then** the browser automatically attempts to reconnect once connectivity is restored
-3. **Given** a client reconnects after disconnection, **When** new observations are processed, **Then** the client receives observation events as if it were a new connection
+3. **Given** a client reconnects after disconnection, **When** new observations are processed, **Then** the client receives new observation events only (no catch-up of missed events; clients needing historical data should query the REST API at `/v1/observations/by-station/:stationId`)
 
 ---
 
@@ -58,28 +59,34 @@ Clients automatically reconnect when the connection is interrupted, and the serv
 
 - What happens when the worker is not running and no new observations are being generated? The stream remains open but no observation events are sent until the worker processes new data.
 - How does the system handle a client that connects when there are no active stations? The connection is established successfully, but no observation events are sent until observations are available.
-- What happens when database queries fail during stream initialization? The stream connection responds with an appropriate error and closes gracefully.
+- What happens when database queries fail during stream initialization? The stream connection responds with HTTP 500 and closes gracefully.
+- What happens when Redis connection fails during stream initialization? The stream connection responds with HTTP 500 and closes gracefully.
 - How does the server handle memory usage with long-lived connections? The server uses a simple broadcast mechanism without buffering historical data, so memory usage remains constant regardless of connection duration.
+- What happens when the worker processes observations faster than a client can receive them? The system uses a fire-and-forget broadcast model; clients on slow connections may miss events if their TCP receive buffer fills. Clients should monitor observation timestamps for gaps and query the REST API to fill missing data.
+- What happens if the worker processes the same observation multiple times (e.g., due to retries)? The server may send duplicate observation events to clients. Clients can deduplicate using stationId + timestamp as a composite key if necessary.
 
 ## Requirements _(mandatory)_
 
 ### Functional Requirements
 
 - **FR-001**: System MUST expose a streaming endpoint at `/v1/observations/stream` that accepts HTTP GET requests and responds with Server-Sent Events
-- **FR-002**: System MUST send a connection event immediately upon client connection to confirm the stream is active
-- **FR-003**: System MUST broadcast new observation events to all connected clients whenever the worker processes and stores new buoy data
+- **FR-002**: System MUST send a connection event immediately upon client connection to confirm the stream is active. The connection event MUST use event type `connection` and include JSON data with fields: `status` ("connected") and `timestamp` (ISO 8601)
+- **FR-003**: System MUST use Redis Pub/Sub to broadcast new observation events from worker to server. Worker MUST publish to the `observations:new` Redis channel after successfully storing an observation. Server MUST subscribe to this channel and broadcast received messages to all connected SSE clients
 - **FR-004**: Each observation event MUST include all critical fields: stationId, timestamp (ISO 8601), waveHeightM, windSpeedMps, windDirDeg, waterTempC, and pressureHpa
-- **FR-005**: System MUST use the SSE format with `event:` and `data:` fields, where the event type is "observation" and data is JSON-formatted
+- **FR-005**: System MUST use the SSE format with `event:` and `data:` fields, where the event type is "observation" for data events and "connection" for connection confirmation
 - **FR-006**: System MUST set appropriate HTTP headers for SSE: `Content-Type: text/event-stream`, `Cache-Control: no-cache`, and `Connection: keep-alive`
 - **FR-007**: System MUST detect client disconnections and clean up associated resources to prevent memory leaks
 - **FR-008**: System MUST support multiple concurrent client connections without data loss or duplication
 - **FR-009**: System MUST deliver observation events to clients within 200ms of the worker processing the observation
 - **FR-010**: The streaming endpoint MUST be compatible with the browser's native EventSource API and standard SSE clients
+- **FR-011**: System MUST respond with HTTP 500 and close the connection if Redis or database initialization fails during stream setup
+- **FR-012**: System MUST respond with HTTP 400 if the client request is missing required SSE headers or is otherwise malformed
 
 ### Key Entities
 
 - **Observation Event**: A real-time message sent to connected clients containing buoy observation data with fields matching the database schema (stationId, timestamp, waveHeightM, windSpeedMps, windDirDeg, waterTempC, pressureHpa)
 - **Stream Connection**: An active SSE connection between a client and the server, maintained as a long-lived HTTP request with keep-alive semantics
+- **Redis Pub/Sub Channel**: The `observations:new` Redis channel used to broadcast observation events from the worker process to the server process, enabling decoupled real-time communication
 
 ## Success Criteria _(mandatory)_
 
