@@ -52,3 +52,31 @@ export const dbQueryErrorCounter = new Counter({
   labelNames: ["model", "operation", "error_type"],
   registers: [register],
 });
+
+// SSE streaming metrics
+export const sseConnectionsGauge = new Gauge({
+  name: "sse_connections_total",
+  help: "Number of active SSE connections",
+  registers: [register],
+});
+
+export const sseEventsSentCounter = new Counter({
+  name: "sse_events_sent_total",
+  help: "Total number of SSE events sent",
+  labelNames: ["event_type"],
+  registers: [register],
+});
+
+export const sseConnectionDurationHistogram = new Histogram({
+  name: "sse_connection_duration_seconds",
+  help: "Duration of SSE connections in seconds",
+  buckets: [1, 10, 30, 60, 300, 600, 1800, 3600],
+  registers: [register],
+});
+
+export const sseBroadcastLatencyHistogram = new Histogram({
+  name: "sse_broadcast_latency_ms",
+  help: "Time to broadcast event to all clients in milliseconds",
+  buckets: [1, 5, 10, 25, 50, 100, 250, 500],
+  registers: [register],
+});

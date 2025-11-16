@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SSE Test Client - Buoy Observations</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      h1 {
+        color: #333;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .status.disconnected {
+        background-color: #fee;
+        color: #c33;
+      }
+      .status.connected {
+        background-color: #efe;
+        color: #3c3;
+      }
+      .status.error {
+        background-color: #ffa;
+        color: #c93;
+      }
+      .controls {
+        margin: 20px 0;
+      }
+      button {
+        padding: 10px 20px;
+        margin-right: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        margin: 20px 0;
+      }
+      .stat-card {
+        background: white;
+        padding: 15px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .stat-card h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #666;
+      }
+      .stat-card .value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+      }
+      .events {
+        background: white;
+        padding: 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        max-height: 600px;
+        overflow-y: auto;
+      }
+      .event {
+        padding: 10px;
+        margin: 10px 0;
+        border-left: 4px solid #007bff;
+        background-color: #f9f9f9;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+      }
+      .event.connection {
+        border-left-color: #28a745;
+      }
+      .event.observation {
+        border-left-color: #007bff;
+      }
+      .event .time {
+        color: #666;
+        margin-bottom: 5px;
+      }
+      .event .data {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🌊 SSE Test Client - Buoy Observations</h1>
+
+    <div id="status" class="status disconnected">Status: Disconnected</div>
+
+    <div class="controls">
+      <button id="connectBtn" onclick="connect()">Connect</button>
+      <button id="disconnectBtn" onclick="disconnect()" disabled>
+        Disconnect
+      </button>
+      <button onclick="clearEvents()">Clear Events</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <h3>Connection Events</h3>
+        <div class="value" id="connectionCount">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Observation Events</h3>
+        <div class="value" id="observationCount">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Total Events</h3>
+        <div class="value" id="totalCount">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Connection Duration</h3>
+        <div class="value" id="duration">0s</div>
+      </div>
+    </div>
+
+    <h2>Event Stream</h2>
+    <div class="events" id="events">
+      <p style="color: #999">
+        No events yet. Click "Connect" to start receiving events.
+      </p>
+    </div>
+
+    <script>
+      let eventSource = null;
+      let connectionCount = 0;
+      let observationCount = 0;
+      let connectionStartTime = null;
+      let durationInterval = null;
+
+      const SERVER_URL = "http://localhost:3000";
+      const STREAM_ENDPOINT = "/v1/observations/stream";
+
+      function updateStatus(text, className) {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = `Status: ${text}`;
+        statusEl.className = `status ${className}`;
+      }
+
+      function updateStats() {
+        document.getElementById("connectionCount").textContent =
+          connectionCount;
+        document.getElementById("observationCount").textContent =
+          observationCount;
+        document.getElementById("totalCount").textContent =
+          connectionCount + observationCount;
+      }
+
+      function updateDuration() {
+        if (connectionStartTime) {
+          const seconds = Math.floor((Date.now() - connectionStartTime) / 1000);
+          document.getElementById("duration").textContent = `${seconds}s`;
+        }
+      }
+
+      function addEvent(type, data) {
+        const eventsEl = document.getElementById("events");
+
+        // Remove placeholder text on first event
+        if (
+          eventsEl.children.length === 1 &&
+          eventsEl.children[0].tagName === "P"
+        ) {
+          eventsEl.innerHTML = "";
+        }
+
+        const eventEl = document.createElement("div");
+        eventEl.className = `event ${type}`;
+
+        const timeEl = document.createElement("div");
+        timeEl.className = "time";
+        timeEl.textContent = new Date().toLocaleTimeString();
+
+        const dataEl = document.createElement("div");
+        dataEl.className = "data";
+        dataEl.textContent = `Event: ${type}\nData: ${JSON.stringify(data, null, 2)}`;
+
+        eventEl.appendChild(timeEl);
+        eventEl.appendChild(dataEl);
+
+        eventsEl.insertBefore(eventEl, eventsEl.firstChild);
+
+        // Keep only last 50 events
+        while (eventsEl.children.length > 50) {
+          eventsEl.removeChild(eventsEl.lastChild);
+        }
+      }
+
+      function connect() {
+        if (eventSource) {
+          console.log("Already connected");
+          return;
+        }
+
+        console.log("Connecting to SSE endpoint...");
+        updateStatus("Connecting...", "disconnected");
+
+        eventSource = new EventSource(`${SERVER_URL}${STREAM_ENDPOINT}`);
+        connectionStartTime = Date.now();
+
+        // Start duration counter
+        durationInterval = setInterval(updateDuration, 1000);
+
+        // Listen for connection event
+        eventSource.addEventListener("connection", (event) => {
+          console.log("Connection event:", event.data);
+          const data = JSON.parse(event.data);
+          connectionCount++;
+          updateStats();
+          addEvent("connection", data);
+          updateStatus("Connected", "connected");
+        });
+
+        // Listen for observation events
+        eventSource.addEventListener("observation", (event) => {
+          console.log("Observation event:", event.data);
+          const data = JSON.parse(event.data);
+          observationCount++;
+          updateStats();
+          addEvent("observation", data);
+        });
+
+        // Handle errors
+        eventSource.onerror = (error) => {
+          console.error("SSE error:", error);
+          updateStatus("Error / Reconnecting...", "error");
+
+          // EventSource will automatically try to reconnect
+          // If it can't reconnect, we'll disconnect
+          if (eventSource.readyState === EventSource.CLOSED) {
+            disconnect();
+          }
+        };
+
+        // Update button states
+        document.getElementById("connectBtn").disabled = true;
+        document.getElementById("disconnectBtn").disabled = false;
+      }
+
+      function disconnect() {
+        if (!eventSource) {
+          return;
+        }
+
+        console.log("Disconnecting...");
+        eventSource.close();
+        eventSource = null;
+        connectionStartTime = null;
+
+        if (durationInterval) {
+          clearInterval(durationInterval);
+          durationInterval = null;
+        }
+
+        updateStatus("Disconnected", "disconnected");
+
+        // Update button states
+        document.getElementById("connectBtn").disabled = false;
+        document.getElementById("disconnectBtn").disabled = true;
+      }
+
+      function clearEvents() {
+        const eventsEl = document.getElementById("events");
+        eventsEl.innerHTML =
+          '<p style="color: #999;">Events cleared. New events will appear here.</p>';
+      }
+
+      // Auto-connect on page load
+      window.addEventListener("load", () => {
+        console.log("Page loaded, ready to connect");
+        // Uncomment to auto-connect:
+        // connect();
+      });
+
+      // Cleanup on page unload
+      window.addEventListener("beforeunload", () => {
+        if (eventSource) {
+          disconnect();
+        }
+      });
+    </script>
+  </body>
+</html>

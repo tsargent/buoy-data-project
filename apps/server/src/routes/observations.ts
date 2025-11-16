@@ -12,8 +12,92 @@ import {
 } from "../../lib/validation.js";
 import { observationsQueriedCounter } from "../../lib/metrics.js";
 import type { Observation } from "@prisma/client";
+import { connectionManager } from "../../lib/sse-manager.js";
+import { isSubscriberConnected } from "../../lib/redis.js";
 
 const plugin: FastifyPluginAsync = async (app) => {
+  /**
+   * SSE Stream endpoint - Real-time observation events
+   *
+   * GET /stream
+   *
+   * Establishes a Server-Sent Events connection and streams real-time observation
+   * events as they are published by the worker.
+   *
+   * Returns:
+   * - 200: SSE connection established (sends connection event immediately)
+   * - 500: Service unavailable (Redis not connected)
+   */
+  app.get("/stream", async (request, reply) => {
+    // Check if Redis subscriber is connected
+    if (!isSubscriberConnected()) {
+      const error = createError(
+        ErrorCode.SERVICE_UNAVAILABLE,
+        "Real-time streaming is temporarily unavailable. Please try again later."
+      );
+      return reply
+        .code(getStatusForErrorCode(ErrorCode.SERVICE_UNAVAILABLE))
+        .send(error);
+    }
+
+    // Set SSE response headers
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no", // Disable nginx buffering
+    });
+
+    // Add client to connection manager
+    connectionManager.addClient(reply);
+
+    // Send connection confirmation event
+    const connectionEvent = {
+      status: "connected",
+      timestamp: new Date().toISOString(),
+    };
+    reply.raw.write(
+      `event: connection\ndata: ${JSON.stringify(connectionEvent)}\n\n`
+    );
+
+    request.log.info(
+      {
+        connectionCount: connectionManager.getConnectionCount(),
+        requestId: request.id,
+      },
+      "SSE client connected"
+    );
+
+    // Handle client disconnection
+    request.raw.on("close", () => {
+      const duration = connectionManager.getConnectionDuration(reply);
+      connectionManager.removeClient(reply);
+
+      request.log.info(
+        {
+          connectionDuration: Math.round(duration / 1000),
+          connectionCount: connectionManager.getConnectionCount(),
+          requestId: request.id,
+        },
+        "SSE client disconnected"
+      );
+    });
+
+    // Handle connection errors
+    request.raw.on("error", (err: Error) => {
+      request.log.error(
+        {
+          error: err.message,
+          requestId: request.id,
+        },
+        "SSE connection error"
+      );
+      connectionManager.removeClient(reply);
+    });
+
+    // Keep connection open (don't call reply.send())
+  });
+
   app.get<{
     Params: { stationId: string };
     Querystring: { page?: string; limit?: string; since?: string };
