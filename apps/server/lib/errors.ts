@@ -8,6 +8,7 @@ export const ErrorCode = {
   UNAUTHORIZED: "UNAUTHORIZED",
   FORBIDDEN: "FORBIDDEN",
   BAD_REQUEST: "BAD_REQUEST",
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -29,7 +30,7 @@ export interface ErrorResponse {
 export function createError(
   code: ErrorCode,
   message: string,
-  details?: unknown,
+  details?: unknown
 ): ErrorResponse {
   return {
     error: {
@@ -55,6 +56,8 @@ export function getStatusForErrorCode(code: ErrorCode): number {
       return 401;
     case ErrorCode.FORBIDDEN:
       return 403;
+    case ErrorCode.SERVICE_UNAVAILABLE:
+      return 503;
     case ErrorCode.INTERNAL_ERROR:
     default:
       return 500;

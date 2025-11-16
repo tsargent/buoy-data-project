@@ -9,20 +9,50 @@ Transform real-time and historical NOAA buoy observations into reliable, well-st
 
 ## 🏗️ Architecture
 
-This is a TypeScript monorepo using pnpm workspaces:
+This is a TypeScript monorepo using pnpm workspaces with a **three-layer architecture**:
+
+### Layer Overview
+
+```text
+┌─────────────────────────────────────────────────────┐
+│            Infrastructure Layer (Docker)             │
+│  PostgreSQL (database) + Redis (message bus)        │
+│  Started once: docker compose up -d                  │
+└─────────────────────────────────────────────────────┘
+                      ↕ (used by)
+┌─────────────────────────────────────────────────────┐
+│         Application Layer (Node.js + TypeScript)     │
+│  • Server (Fastify API + SSE streaming)             │
+│  • Worker (NDBC data fetcher + Redis publisher)     │
+│  Started separately: pnpm dev (with hot reload)     │
+└─────────────────────────────────────────────────────┘
+                      ↕ (serves)
+┌─────────────────────────────────────────────────────┐
+│              Client Layer (Browsers/Apps)            │
+│  EventSource API consuming real-time observations    │
+└─────────────────────────────────────────────────────┘
+```
+
+**Why separate layers?**
+- **Docker services** (PostgreSQL, Redis) are infrastructure - start once, rarely restart
+- **Node.js apps** (Server, Worker) are your code - restart frequently during development
+- **Fast iteration**: Hot reload without rebuilding Docker images
+
+### Project Structure
 
 ```text
 apps/
-  server/     - Fastify REST API
-  worker/     - BullMQ background job processor
+  server/     - Fastify REST API + SSE streaming endpoint
+  worker/     - BullMQ job processor + NDBC data fetcher
   web-demo/   - (Future) Web audio client demo
 
 packages/
   shared/     - Shared types and schemas
 
 docs/
-  PRD.md               - Product requirements
-  AUDIO_CLIENTS.md     - Audio integration guide
+  PRD.md                  - Product requirements
+  AUDIO_CLIENTS.md        - Audio integration guide
+  SSE_IMPLEMENTATION.md   - Real-time streaming architecture
 ```
 
 **Tech Stack:**
@@ -31,6 +61,7 @@ docs/
 - **Server**: Fastify 5 + Prisma ORM
 - **Queue**: BullMQ + Redis
 - **Database**: PostgreSQL
+- **Streaming**: Server-Sent Events (SSE) + Redis Pub/Sub
 - **Testing**: Vitest
 - **Linting**: ESLint + Prettier
 
@@ -50,15 +81,18 @@ cd buoy-sonification
 pnpm install
 ```
 
-### 2. Start Services
+### 2. Start Infrastructure Services
 
 ```bash
-# Start Postgres + Redis
+# Start PostgreSQL + Redis (infrastructure layer only)
 docker compose up -d
 
 # Verify services are running
 docker compose ps
 ```
+
+> **Note**: `docker compose up` only starts database and Redis - NOT your application.
+> The server and worker are Node.js apps started separately (next steps) for fast development iteration.
 
 ### 3. Configure Environment
 
@@ -94,15 +128,21 @@ This seeds 5 active NOAA buoy stations:
 - 46050: Stonewall Bank, OR
 - 42001: Mid-Gulf
 
-### 6. Start Development Servers
+### 6. Start Application Servers
 
 ```bash
-# Terminal 1: Start API server
+# Terminal 1: Start API server (application layer)
 pnpm -F @app/server dev
 
-# Terminal 2: Start worker (ingests real NOAA data every 5 minutes)
+# Terminal 2: Start worker (application layer)
 pnpm -F worker dev
 ```
+
+> **Why separate processes?**
+> - **Server** = Fastify API + SSE streaming endpoint
+> - **Worker** = Background job that fetches NDBC data and publishes to Redis
+> - Both are Node.js apps (not Docker) for hot reload during development
+> - Both connect to Docker infrastructure (PostgreSQL + Redis)
 
 The API will be available at `http://localhost:3000`.
 
@@ -111,6 +151,7 @@ The API will be available at `http://localhost:3000`.
 - Fetch latest observations from all active stations
 - Parse and validate NOAA data
 - Store observations in Postgres (handling missing sensors gracefully)
+- Publish new observations to Redis (for real-time streaming)
 - Ingest ~6,000-7,000 observations per station per run
 
 **Verify it's working**:

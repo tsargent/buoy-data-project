@@ -2,6 +2,7 @@ import { Worker, Queue } from "bullmq";
 import { env } from "./env.js";
 import { prisma } from "../lib/prisma.js";
 import { parseNDBCFile } from "../lib/ndbc-parser.js";
+import { publishObservation } from "../lib/redis-publisher.js";
 
 // Redis connection from env
 const connection = {
@@ -46,6 +47,7 @@ const worker = new Worker(
 
       // Persist to database (upsert to avoid duplicates)
       let inserted = 0;
+      let published = 0;
       for (const obs of observations) {
         const observedAt = new Date(
           Date.UTC(obs.year, obs.month - 1, obs.day, obs.hour, obs.minute)
@@ -78,6 +80,19 @@ const worker = new Worker(
             },
           });
           inserted++;
+
+          // Publish to Redis for real-time streaming
+          // Fire-and-forget: errors are logged but don't fail the job
+          await publishObservation({
+            stationId,
+            timestamp: observedAt.toISOString(),
+            waveHeightM: obs.waveHeight,
+            windSpeedMps: obs.windSpeed,
+            windDirDeg: obs.windDirection,
+            waterTempC: obs.waterTemp,
+            pressureHpa: obs.pressure,
+          });
+          published++;
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           void job.log(
@@ -87,7 +102,8 @@ const worker = new Worker(
       }
 
       void job.log(
-        `✅ Ingested ${inserted}/${observations.length} observations for ${stationId}`
+        `✅ Ingested ${inserted}/${observations.length} observations for ${stationId} ` +
+          `(published ${published} to Redis)`
       );
       return { stationId, inserted, total: observations.length };
     } catch (error) {
