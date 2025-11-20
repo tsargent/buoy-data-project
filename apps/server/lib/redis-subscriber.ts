@@ -4,10 +4,11 @@ import { connectionManager } from "./sse-manager.js";
 import { logger } from "./logger.js";
 
 /**
- * Schema for observation messages published via Redis.
- * Matches the observation data structure from the database.
+ * Schema for observation events published via Redis.
+ * Renamed from ObservationMessageSchema to align with specification naming (ObservationEvent).
+ * Backwards-compatible alias retained temporarily.
  */
-export const ObservationMessageSchema = z.object({
+export const ObservationEventSchema = z.object({
   stationId: z.string(),
   timestamp: z.string().datetime(),
   waveHeightM: z.number().nullable(),
@@ -17,7 +18,11 @@ export const ObservationMessageSchema = z.object({
   pressureHpa: z.number().nullable(),
 });
 
-export type ObservationMessage = z.infer<typeof ObservationMessageSchema>;
+export type ObservationEvent = z.infer<typeof ObservationEventSchema>;
+
+// Deprecated aliases (to be removed after migration)
+export const ObservationMessageSchema = ObservationEventSchema;
+export type ObservationMessage = ObservationEvent;
 
 const REDIS_CHANNEL = "observations:new";
 
@@ -68,7 +73,7 @@ export async function initializeSubscriber(): Promise<void> {
       const data: unknown = JSON.parse(message);
 
       // Validate observation schema
-      const validationResult = ObservationMessageSchema.safeParse(data);
+      const validationResult = ObservationEventSchema.safeParse(data);
       if (!validationResult.success) {
         logger.error(
           {

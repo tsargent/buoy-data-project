@@ -82,10 +82,11 @@ export function getPublisher(): Redis {
 }
 
 /**
- * Observation message structure for publishing.
- * Matches the ObservationMessageSchema in server.
+ * Observation event structure for publishing.
+ * Matches the ObservationEventSchema in server. Formerly named ObservationMessage for alignment.
+ * A deprecated alias (ObservationMessage) is retained temporarily.
  */
-export interface ObservationMessage {
+export interface ObservationEvent {
   stationId: string;
   timestamp: string; // ISO 8601 format
   waveHeightM: number | null;
@@ -94,6 +95,9 @@ export interface ObservationMessage {
   waterTempC: number | null;
   pressureHpa: number | null;
 }
+
+// Deprecated alias (remove after downstream updates)
+export type ObservationMessage = ObservationEvent;
 
 /**
  * Publish an observation to Redis for real-time streaming.
@@ -105,7 +109,7 @@ export interface ObservationMessage {
  * to prevent database insert failures from being rolled back.
  */
 export async function publishObservation(
-  observation: ObservationMessage
+  observation: ObservationEvent
 ): Promise<void> {
   const publisher = getPublisher();
   const message = JSON.stringify(observation);

@@ -465,7 +465,7 @@ Set up Redis publisher in the worker for sending observation events.
 - [ ] Create publisher client instance:
   - Use existing Redis connection from BullMQ or create new client
   - Consider reusing BullMQ connection for efficiency
-- [ ] Export `publishObservation(observation: ObservationMessage): Promise<void>`
+- [ ] Export `publishObservation(observation: ObservationEvent): Promise<void>`
 - [ ] Add error handling for publish failures
 - [ ] Test publisher:
   - Manually call `publishObservation()` with test data
