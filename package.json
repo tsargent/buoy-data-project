@@ -22,6 +22,7 @@
     "@typescript-eslint/eslint-plugin": "^8.46.4",
     "@typescript-eslint/parser": "^8.46.4",
     "@vitest/ui": "^4.0.9",
+    "eventsource": "^2.0.2",
     "eslint": "^9.39.1",
     "prettier": "^3.6.2",
     "tsx": "^4.20.6",
