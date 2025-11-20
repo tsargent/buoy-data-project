@@ -782,28 +782,32 @@ The feature is complete when:
 9. No known critical bugs
 10. Feature branch ready for PR review
 
-## Timeline Estimate
+## Timeline Estimate (Updated)
 
--### Development Phases
-- **Phase 0**: Foundations (Shared Types, Test Scaffolding, Observability Plan) - 2 hours
-- **Phase 1**: Server Infrastructure Setup - 3 hours
-- **Phase 2**: SSE Endpoint Implementation - 4 hours
-- **Phase 3**: Redis Pub/Sub Integration - 4 hours
-- **Phase 4**: Worker Publishing - 2 hours
-- **Phase 5**: Error Handling - 3 hours
-- **Phase 6**: Multi-Client Support - 2 hours
-- **Phase 7**: Metrics and Observability (instrumentation wiring) - 2 hours
-- **Phase 8**: Testing and Validation - 4 hours
-- **Phase 9**: Documentation - 2 hours
+### Development Phases (Reflected from current `tasks.md` scope)
+**Phase 0**: Foundations (Shared Types, Test Scaffolding, Observability Plan, early Smoke Test) - 2h  
+**Phase 1**: Server Infrastructure Setup - 3.5h  
+**Phase 2**: SSE Endpoint Implementation - 4.5h  
+**Phase 3**: Redis Pub/Sub Integration - 6h  
+**Phase 4**: Worker Publishing - 4h  
+**Phase 5**: Error Handling & Validation - 4h  
+**Phase 6**: Multi-Client, Load & Memory Profiling - 4.5h (includes new memory profiling task)  
+**Phase 7**: Metrics & Logging Instrumentation - 2.5h  
+**Phase 8**: Testing & Validation (unit, integration, manual, browser) - 10.5h  
+**Phase 9**: Documentation & ADRs - 4h  
 
-**Total Estimated Time**: 28 hours
+**Total Estimated Time**: 48.5 hours (supersedes prior 28h baseline)
 
-**Breakdown by Priority**:
-- P1 (Core Streaming): 13 hours (Phases 1-4)
-- P2 (Multi-Client): 2 hours (Phase 6)
-- P3 (Polish, Observability & Testing): 13 hours (Phases 0,5,7-9)
+**Breakdown by Priority**:  
+P0 (Critical Path / Blockers): ~22.5h  
+P1 (High Quality & Reliability): ~21h  
+P2 (Enhancements / Maintainability): ~5h  
 
-**Note**: Estimates assume familiarity with Fastify, Redis, and SSE. First-time implementation may take 30-35 hours. Testing and debugging may require additional time depending on issues discovered.
+**Variance Explanation**: Increase from original 28h due to: formal test-first foundations (Phase 0), expanded integration & browser testing, explicit load/concurrency & memory profiling, structured observability instrumentation, and fuller documentation scope.
+
+**Test-First Gating**: The smoke test (Task 0.3) MUST be authored and failing (red) prior to implementing broadcast logic (Tasks 2.2 and 3.2), enforcing constitution principle 2.2 (Red → Green → Refactor).
+
+**Future Review**: Re-evaluate Phase 8/9 efforts after initial latency + memory measurements; potential reduction if tooling accelerates integration tests.
 
 ## Next Steps
 

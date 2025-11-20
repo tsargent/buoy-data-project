@@ -79,14 +79,18 @@ Clients automatically reconnect when the connection is interrupted, and the serv
 - **FR-008**: System MUST support multiple concurrent client connections without data loss or duplication
 - **FR-009**: System MUST deliver observation events to clients within 200ms of the worker processing the observation
 - **FR-010**: The streaming endpoint MUST be compatible with the browser's native EventSource API and standard SSE clients
-- **FR-011**: System MUST respond with HTTP 500 and close the connection if Redis or database initialization fails during stream setup. Error responses MUST use shape `{ "error": { "code": string, "message": string } }`.
-- **FR-012**: System MUST respond with HTTP 400 if the client request is malformed. A request is malformed if the method is not GET, or the `Accept` header explicitly excludes `text/event-stream` (e.g. quality factor q=0). Valid `Accept` includes `text/event-stream` or `*/*`. Non-GET MUST return 405. All error responses MUST use shape `{ "error": { "code": string, "message": string } }`.
+- **FR-011**: System MUST respond with HTTP 500 and close the connection if Redis or database initialization fails during stream setup. Error responses MUST use the standard error shape (see **NFR-Error-Shape**).
+- **FR-012**: System MUST respond with HTTP 400 if the client request is malformed. A request is malformed if the method is not GET, or the `Accept` header explicitly excludes `text/event-stream` (e.g. quality factor q=0). Valid `Accept` includes `text/event-stream` or `*/*`. Non-GET MUST return 405. All error responses MUST use the standard error shape (see **NFR-Error-Shape**).
 
 ### Non-Functional Requirements
 
 - **NFR-Latency**: p95 end-to-end (Redis publish → client receive) latency ≤ 200ms; p50 ≤ 120ms. Measured via `sse_broadcast_latency_ms` histogram plus client-side timestamp comparison in tests.
-- **NFR-Concurrency**: Stable operation (no data loss, no memory leak) with ≥10 concurrent clients (goal validation at 50). Data loss defined as any missing sequential observation timestamp among clients.
-- **NFR-Memory-Stability**: RSS growth ≤ 10MB over 60 minutes with 10 idle clients; connection objects reclaimed within 5s of disconnect.
+- **NFR-Concurrency**: Stable operation (no data loss, no memory leak) with ≥10 concurrent clients and validated scalability at 50 concurrent clients.
+	- Data loss: any missing sequential observation timestamp among clients during a controlled publish sequence.
+	- 10 clients: p95 broadcast latency ≤ 200ms; memory RSS growth ≤ 10MB over 60 minutes (idle + sporadic events).
+	- 50 clients: p95 broadcast latency ≤ 220ms; p50 ≤ 150ms; memory RSS growth ≤ 10MB per hour; zero sustained event delivery failure.
+	- Measurement: latency captured as (client receive timestamp – Redis publish handler start timestamp) recorded in test harness; memory sampled every 5 minutes (RSS) and compared against starting baseline.
+- **NFR-Memory-Stability**: RSS growth ≤ 10MB over 60 minutes with 10 idle clients; ≤ 10MB/hour with 50 active clients; connection objects reclaimed within 5s of disconnect.
 - **NFR-Observability**: Metrics (`sse_connections_total`, `sse_events_sent_total`, `sse_connection_duration_seconds`, `sse_broadcast_latency_ms`) and structured logs (connection, disconnection, broadcast, error) defined pre-implementation and exposed at `/metrics`.
 - **NFR-Error-Shape**: Streaming errors use `{ "error": { "code", "message" } }` with codes `INVALID_REQUEST`, `SERVICE_UNAVAILABLE`.
 - **NFR-Reconnection**: Auto-reconnect succeeds within 5s after transient network/server restart; no historical replay.

@@ -67,6 +67,8 @@ Add initial failing tests covering connection manager behavior, SSE formatting, 
 **Description**:
 Minimal script validating stream viability (connect + single observation event).
 
+"Test-First" Gating: This smoke test MUST be authored (initially failing) before implementing broadcast logic in Tasks 2.2 and 3.2. It transitions from red → green only after those tasks are completed, enforcing constitution principle 2.2.
+
 **Steps**:
 - [ ] Create `scripts/smoke/stream-smoke.test.ts` (Node + EventSource polyfill)
 - [ ] Connect to `/v1/observations/stream`, await `connection` event ≤ 1000ms
@@ -77,6 +79,7 @@ Minimal script validating stream viability (connect + single observation event).
 - [ ] Smoke test passes locally
 - [ ] Fails descriptively if no event received
 - [ ] Added to PR CI pipeline
+- [ ] Was created and failed prior to implementation of Tasks 2.2 and 3.2 (evidence in commit history)
 
 **Related Requirements**: SC-001, SC-002, Constitution Test Categories (E2E)
 
@@ -803,6 +806,33 @@ Test system performance with 50+ concurrent connections.
 
 ---
 
+#### Task 6.3: Memory profiling & stability verification
+
+**Priority**: P1 (High)
+**Estimate**: 1 hour
+**Dependencies**: Task 6.1 (baseline concurrency), Task 6.2 (load harness)
+
+**Description**:
+Implement a memory profiling script to sample RSS at 5-minute intervals during 60-minute runs for 10 idle clients and 50 active clients. Validate NFR-Memory-Stability and extended 50-client criteria in NFR-Concurrency.
+
+**Steps**:
+- [ ] Add `scripts/profile/memory-profile.ts` to sample `process.memoryUsage().rss` every 5 minutes
+- [ ] Integrate with load test harness: start profiling when clients connect, stop after duration
+- [ ] Record baseline RSS at t0, compute deltas at each interval
+- [ ] Output JSON report to `specs/002-realtime-stream/test-results.md` append section
+- [ ] Flag run as failure if thresholds exceeded (10MB/60min @10; 10MB/hour @50)
+
+**Acceptance Criteria**:
+- [ ] Report includes timestamps, RSS values, deltas, thresholds
+- [ ] 10-client idle run: RSS growth ≤ 10MB over 60 minutes
+- [ ] 50-client active run: RSS growth ≤ 10MB over hour
+- [ ] Connection objects reclaimed within 5s of disconnect (sample final delta)
+- [ ] Linked in manual success criteria (Task 8.3) results
+
+**Related Requirements**: NFR-Memory-Stability, NFR-Concurrency
+
+---
+
 ### Phase 7: Metrics and Observability
 
 #### Task 7.1: Add SSE-specific metrics
@@ -1342,8 +1372,8 @@ Update project README with SSE information and consider creating an ADR for Redi
 
 ## Task Summary
 
-**Total Tasks**: 31 tasks  
-**Estimated Time**: 47.5 hours
+**Total Tasks**: 32 tasks  
+**Estimated Time**: 48.5 hours
 
 ### By Priority:
 
@@ -1359,7 +1389,7 @@ Update project README with SSE information and consider creating an ADR for Redi
 - **Phase 3**: 3 tasks (6 hours) - Redis integration
 - **Phase 4**: 3 tasks (4 hours) - Worker publishing
 - **Phase 5**: 3 tasks (4 hours) - Error handling
-- **Phase 6**: 2 tasks (3.5 hours) - Multi-client support
+- **Phase 6**: 3 tasks (4.5 hours) - Multi-client support & memory profiling
 - **Phase 7**: 2 tasks (2.5 hours) - Metrics
 - **Phase 8**: 4 tasks (10.5 hours) - Testing
 - **Phase 9**: 3 tasks (4 hours) - Documentation
