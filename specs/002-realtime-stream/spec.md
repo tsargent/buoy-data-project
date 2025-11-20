@@ -79,8 +79,19 @@ Clients automatically reconnect when the connection is interrupted, and the serv
 - **FR-008**: System MUST support multiple concurrent client connections without data loss or duplication
 - **FR-009**: System MUST deliver observation events to clients within 200ms of the worker processing the observation
 - **FR-010**: The streaming endpoint MUST be compatible with the browser's native EventSource API and standard SSE clients
-- **FR-011**: System MUST respond with HTTP 500 and close the connection if Redis or database initialization fails during stream setup
-- **FR-012**: System MUST respond with HTTP 400 if the client request is missing required SSE headers or is otherwise malformed
+- **FR-011**: System MUST respond with HTTP 500 and close the connection if Redis or database initialization fails during stream setup. Error responses MUST use shape `{ "error": { "code": string, "message": string } }`.
+- **FR-012**: System MUST respond with HTTP 400 if the client request is malformed. A request is malformed if the method is not GET, or the `Accept` header explicitly excludes `text/event-stream` (e.g. quality factor q=0). Valid `Accept` includes `text/event-stream` or `*/*`. Non-GET MUST return 405. All error responses MUST use shape `{ "error": { "code": string, "message": string } }`.
+
+### Non-Functional Requirements
+
+- **NFR-Latency**: p95 end-to-end (Redis publish → client receive) latency ≤ 200ms; p50 ≤ 120ms. Measured via `sse_broadcast_latency_ms` histogram plus client-side timestamp comparison in tests.
+- **NFR-Concurrency**: Stable operation (no data loss, no memory leak) with ≥10 concurrent clients (goal validation at 50). Data loss defined as any missing sequential observation timestamp among clients.
+- **NFR-Memory-Stability**: RSS growth ≤ 10MB over 60 minutes with 10 idle clients; connection objects reclaimed within 5s of disconnect.
+- **NFR-Observability**: Metrics (`sse_connections_total`, `sse_events_sent_total`, `sse_connection_duration_seconds`, `sse_broadcast_latency_ms`) and structured logs (connection, disconnection, broadcast, error) defined pre-implementation and exposed at `/metrics`.
+- **NFR-Error-Shape**: Streaming errors use `{ "error": { "code", "message" } }` with codes `INVALID_REQUEST`, `SERVICE_UNAVAILABLE`.
+- **NFR-Reconnection**: Auto-reconnect succeeds within 5s after transient network/server restart; no historical replay.
+- **NFR-Types**: `ConnectionEvent` and `ObservationEvent` exported from `packages/shared` and imported by server, worker, demo clients; runtime validation mirrors shared types.
+- **NFR-Test-First**: Skeleton failing unit tests for connection manager, schema validation, and SSE formatting created prior to implementation.
 
 ### Key Entities
 
@@ -96,5 +107,5 @@ Clients automatically reconnect when the connection is interrupted, and the serv
 - **SC-002**: Observation events are delivered to all connected clients within 200ms of being processed by the worker
 - **SC-003**: The system maintains stable connections with at least 10 concurrent clients without data loss
 - **SC-004**: Connection cleanup occurs within 5 seconds of client disconnection, preventing resource leaks
-- **SC-005**: The streaming endpoint responds with proper HTTP status codes (200 for successful connection, appropriate error codes for failures)
+- **SC-005**: Status codes: 200 (success), 400 (invalid/malformed), 405 (non-GET), 500 (infrastructure). Errors use `{ "error": { "code", "message" } }`.
 - **SC-006**: Audio/visual clients can successfully parse and utilize observation events for real-time sonification and visualization

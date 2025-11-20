@@ -7,7 +7,108 @@
 
 ## Task List
 
+### Phase 0: Foundations (Types, Tests, Observability Plan)
+
+#### Task 0.1: Shared event type definitions
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 0.5 hours  
+**Dependencies**: None
+
+**Description**:
+Create canonical TypeScript interfaces for public streaming contracts in `packages/shared`.
+
+**Steps**:
+- [ ] Add `packages/shared/src/events.ts` exporting `ConnectionEvent`, `ObservationEvent`
+- [ ] Re-export from `packages/shared/src/index.ts`
+- [ ] Update server and worker code references to use shared types (avoid local duplicates)
+- [ ] Add Zod schemas mirroring shared types (server validation, worker publishing)
+
+**Acceptance Criteria**:
+- [ ] Shared types compile and are imported by server & worker
+- [ ] No locally duplicated observation interfaces
+- [ ] Zod schemas align with shared types (field names + nullability)
+- [ ] ObservationEvent matches FR-004 fields
+
+**Related Requirements**: FR-004, NFR-Types
+
+---
+
+#### Task 0.2: Unit test scaffolding (test-first)
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 0.75 hours  
+**Dependencies**: Task 0.1 (types)
+
+**Description**:
+Add initial failing tests covering connection manager behavior, SSE formatting, and observation validation before implementation.
+
+**Steps**:
+- [ ] Create `apps/server/src/lib/__tests__/connection-manager.spec.ts` (add/remove/broadcast skeleton)
+- [ ] Create `apps/server/src/lib/__tests__/sse-format.spec.ts` (expected event framing tests)
+- [ ] Create `apps/server/src/lib/__tests__/observation-validation.spec.ts` (valid vs invalid payload cases)
+- [ ] Mark tests with TODO comments referencing tasks implementing logic
+
+**Acceptance Criteria**:
+- [ ] Tests initially fail (red)
+- [ ] CI picks up tests (ensure workspace configuration)
+- [ ] Clear TODO markers mapping to implementation tasks
+
+**Related Requirements**: NFR-Test-First, FR-002, FR-005, FR-004
+
+---
+
+#### Task 0.3: E2E smoke test script
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 0.5 hours  
+**Dependencies**: Task 0.2
+
+**Description**:
+Minimal script validating stream viability (connect + single observation event).
+
+**Steps**:
+- [ ] Create `scripts/smoke/stream-smoke.test.ts` (Node + EventSource polyfill)
+- [ ] Connect to `/v1/observations/stream`, await `connection` event ≤ 1000ms
+- [ ] Publish test observation via Redis (direct publish)
+- [ ] Assert receipt of one `observation` event ≤ 2000ms
+
+**Acceptance Criteria**:
+- [ ] Smoke test passes locally
+- [ ] Fails descriptively if no event received
+- [ ] Added to PR CI pipeline
+
+**Related Requirements**: SC-001, SC-002, Constitution Test Categories (E2E)
+
+---
+
+#### Task 0.4: Observability plan artifact
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 0.25 hours  
+**Dependencies**: None
+
+**Description**:
+Document metrics, logging fields, error shape in `docs/SSE_IMPLEMENTATION.md` before code instrumentation.
+
+**Steps**:
+- [ ] Add section "Observability Plan" listing metric names, labels, log event names
+- [ ] Define error shape `{ error: { code, message } }` and codes used
+- [ ] Note latency measurement approach
+
+**Acceptance Criteria**:
+- [ ] Plan section committed prior to implementing metrics/logging
+- [ ] References present in subsequent tasks (7.1, 7.2)
+
+**Related Requirements**: NFR-Observability, NFR-Error-Shape
+
+---
+
 ### Phase 1: Server Infrastructure Setup
+
+#### Task 1.0: Define shared event types (moved to Phase 0; see Task 0.1) – placeholder to preserve numbering continuity
+
+_No actions here; numbering retained for historical reference._
 
 #### Task 1.1: Add Redis client to server
 
@@ -318,9 +419,7 @@ Implement robust error handling for Redis connection failures.
 - [ ] Create error response format:
   ```typescript
   {
-    error: "SERVICE_UNAVAILABLE",
-    message: "Real-time streaming is temporarily unavailable",
-    statusCode: 500
+    "error": { "code": "SERVICE_UNAVAILABLE", "message": "Real-time streaming is temporarily unavailable" }
   }
   ```
 - [ ] Add reconnection logic in redis-subscriber:
@@ -486,12 +585,8 @@ Handle error scenarios during SSE stream initialization.
   - Validate request method is GET
 - [ ] Create error response helper:
   ```typescript
-  function createStreamError(code: ErrorCode, message: string): ErrorResponse {
-    return {
-      error: code,
-      message,
-      statusCode: code === 'SERVICE_UNAVAILABLE' ? 500 : 400
-    };
+  function streamError(code: 'SERVICE_UNAVAILABLE'|'INVALID_REQUEST', message: string) {
+    return { error: { code, message } };
   }
   ```
 - [ ] Return HTTP 500 if:
@@ -534,10 +629,14 @@ Validate incoming SSE requests and reject invalid ones.
   ```typescript
   const SSERequestSchema = z.object({
     headers: z.object({
-      accept: z.string().refine(
-        (val) => val.includes('text/event-stream') || val.includes('*/*'),
-        'Accept header must include text/event-stream'
-      )
+      accept: z.string().refine((val) => {
+        // Accept valid if contains text/event-stream OR */*
+        if (val.includes('text/event-stream')) return true;
+        if (val.includes('*/*')) return true;
+        // Explicit exclusion example: text/event-stream;q=0
+        if (/text\/event-stream;\s*q=0/.test(val)) return false;
+        return false;
+      }, 'Accept must allow text/event-stream')
     })
   });
   ```
@@ -545,9 +644,7 @@ Validate incoming SSE requests and reject invalid ones.
 - [ ] Add error response:
   ```typescript
   {
-    error: "INVALID_REQUEST",
-    message: "SSE streaming requires Accept: text/event-stream header",
-    statusCode: 400
+    "error": { "code": "INVALID_REQUEST", "message": "SSE streaming requires Accept: text/event-stream or */*" }
   }
   ```
 - [ ] Test with various Accept headers:
@@ -652,7 +749,7 @@ Verify the system supports multiple simultaneous SSE clients without issues.
 - [ ] No data loss or duplication (SC-003)
 - [ ] No race conditions in connection registry
 - [ ] Connection count metric is accurate
-- [ ] Memory usage is stable
+- [ ] Memory usage is stable (RSS delta ≤ 10MB over 60min @10 clients)
 
 **Related Requirements**: FR-008, SC-003, User Story 2
 
@@ -696,7 +793,7 @@ Test system performance with 50+ concurrent connections.
 **Acceptance Criteria**:
 - [ ] Server handles 50+ concurrent clients (SC-003)
 - [ ] Response time remains acceptable (<200ms)
-- [ ] Memory usage is stable (no leaks)
+- [ ] Memory usage is stable (RSS delta ≤ 10MB/hour @50 clients)
 - [ ] No performance degradation with many clients
 - [ ] CPU usage stays under 80%
 - [ ] All events delivered successfully
@@ -1245,8 +1342,8 @@ Update project README with SSE information and consider creating an ADR for Redi
 
 ## Task Summary
 
-**Total Tasks**: 27 tasks  
-**Estimated Time**: 45.5 hours
+**Total Tasks**: 31 tasks  
+**Estimated Time**: 47.5 hours
 
 ### By Priority:
 
@@ -1256,6 +1353,7 @@ Update project README with SSE information and consider creating an ADR for Redi
 
 ### By Phase:
 
+- **Phase 0**: 4 tasks (2 hours) - Foundations
 - **Phase 1**: 2 tasks (3.5 hours) - Server infrastructure
 - **Phase 2**: 3 tasks (4.5 hours) - SSE endpoint
 - **Phase 3**: 3 tasks (6 hours) - Redis integration
@@ -1265,14 +1363,13 @@ Update project README with SSE information and consider creating an ADR for Redi
 - **Phase 7**: 2 tasks (2.5 hours) - Metrics
 - **Phase 8**: 4 tasks (10.5 hours) - Testing
 - **Phase 9**: 3 tasks (4 hours) - Documentation
-- **Phase 10**: 2 tasks (3 hours) - Final integration
 
 ### Critical Path:
 
-1. Task 1.1 → Task 1.2 → Task 2.1 → Task 2.2 → Task 2.3
+1. Task 0.1 → Task 0.2 → Task 1.2 → Task 2.1 → Task 2.2 → Task 2.3
 2. Task 1.1 → Task 3.1 → Task 3.2 → Task 3.3
 3. Task 4.1 → Task 4.2 → Task 4.3
-4. Task 8.1 → Task 8.2 → Task 8.3
+4. Task 0.3 → Task 8.1 → Task 8.2 → Task 8.3
 
 **Critical Path Duration**: ~25 hours
 

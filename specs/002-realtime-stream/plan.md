@@ -107,6 +107,39 @@
 6. Client: Receives observation event, triggers audio/visual
 ```
 
+### Observability Design (Pre-Implementation)
+
+Defining metrics, logging fields, and tracing prior to coding satisfies constitution principles (Test-First & Observability as design input).
+
+Metrics (Prometheus):
+- `sse_connections_total` (Gauge): Active SSE connections.
+- `sse_events_sent_total` (Counter, label `event_type`): Counts `connection` and `observation` events.
+- `sse_connection_duration_seconds` (Histogram): Lifetime of connections (buckets: 1,10,30,60,300,600,1800,3600).
+- `sse_broadcast_latency_ms` (Histogram): Time from Redis message receipt to last client write (buckets: 1,5,10,25,50,100,250,500).
+
+Structured Log Events (JSON):
+- `sse_client_connected` { connectionCount }
+- `sse_client_disconnected` { connectionCount, connectionDurationMs }
+- `redis_message_received` { channel, stationId }
+- `observation_broadcasted` { stationId, clientCount, latencyMs }
+- `redis_subscriber_error` { message }
+- `publish_observation_failed` { stationId, timestamp, attempt }
+
+Tracing / Correlation:
+- Include `requestId` (Fastify request id) for connection/disconnection logs; broadcast logs may omit if not tied to a single request.
+
+Error Shape:
+All streaming errors: `{ "error": { "code": string, "message": string } }`.
+
+Types:
+Shared contracts (`ConnectionEvent`, `ObservationEvent`) exported from `packages/shared` ensure alignment across server, worker, demo clients.
+
+Test Hooks:
+- Latency measurement uses timestamps captured at Redis message handler start and after final write.
+- Memory stability checked via periodic RSS sampling script (optional in load test phase).
+
+These artifacts are declared before implementation; instrumentation wiring occurs during metrics/logging tasks.
+
 ## Implementation Tasks
 
 ### Phase 1: Server Infrastructure Setup
@@ -751,23 +784,24 @@ The feature is complete when:
 
 ## Timeline Estimate
 
-### Development Phases
+-### Development Phases
+- **Phase 0**: Foundations (Shared Types, Test Scaffolding, Observability Plan) - 2 hours
 - **Phase 1**: Server Infrastructure Setup - 3 hours
 - **Phase 2**: SSE Endpoint Implementation - 4 hours
 - **Phase 3**: Redis Pub/Sub Integration - 4 hours
 - **Phase 4**: Worker Publishing - 2 hours
 - **Phase 5**: Error Handling - 3 hours
 - **Phase 6**: Multi-Client Support - 2 hours
-- **Phase 7**: Metrics and Observability - 2 hours
+- **Phase 7**: Metrics and Observability (instrumentation wiring) - 2 hours
 - **Phase 8**: Testing and Validation - 4 hours
 - **Phase 9**: Documentation - 2 hours
 
-**Total Estimated Time**: 26 hours
+**Total Estimated Time**: 28 hours
 
 **Breakdown by Priority**:
 - P1 (Core Streaming): 13 hours (Phases 1-4)
 - P2 (Multi-Client): 2 hours (Phase 6)
-- P3 (Polish & Testing): 11 hours (Phases 5, 7-9)
+- P3 (Polish, Observability & Testing): 13 hours (Phases 0,5,7-9)
 
 **Note**: Estimates assume familiarity with Fastify, Redis, and SSE. First-time implementation may take 30-35 hours. Testing and debugging may require additional time depending on issues discovered.
 
@@ -775,7 +809,7 @@ The feature is complete when:
 
 1. ✅ Specification clarified and approved
 2. ✅ Implementation plan created
-3. 🔜 Create detailed task breakdown (`tasks.md`)
+3. 🔜 Create detailed task breakdown (`tasks.md`) including Phase 0 foundations
 4. 🔜 Create feature branch `002-realtime-stream`
-5. 🔜 Begin Phase 1: Server Infrastructure Setup
-6. 🔜 Consider creating ADR 004 for Redis Pub/Sub decision
+5. 🔜 Begin Phase 0 (types, test scaffolding, observability plan) then Phase 1
+6. 🔜 Confirm ADR 004 for Redis Pub/Sub decision (already planned)
