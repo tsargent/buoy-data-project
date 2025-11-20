@@ -1,26 +1,9 @@
-import { z } from "zod";
 import { getSubscriber } from "./redis.js";
 import { connectionManager } from "./sse-manager.js";
 import { logger } from "./logger.js";
+import { ObservationEventSchema, ObservationEvent } from "@pkg/shared";
 
-/**
- * Schema for observation events published via Redis.
- * Renamed from ObservationMessageSchema to align with specification naming (ObservationEvent).
- * Backwards-compatible alias retained temporarily.
- */
-export const ObservationEventSchema = z.object({
-  stationId: z.string(),
-  timestamp: z.string().datetime(),
-  waveHeightM: z.number().nullable(),
-  windSpeedMps: z.number().nullable(),
-  windDirDeg: z.number().nullable(),
-  waterTempC: z.number().nullable(),
-  pressureHpa: z.number().nullable(),
-});
-
-export type ObservationEvent = z.infer<typeof ObservationEventSchema>;
-
-// Deprecated aliases (to be removed after migration)
+// Deprecated aliases retained for transition (remove after downstream updates)
 export const ObservationMessageSchema = ObservationEventSchema;
 export type ObservationMessage = ObservationEvent;
 

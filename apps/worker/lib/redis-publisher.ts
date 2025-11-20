@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import { env } from "../src/env.js";
 import { logger } from "./logger.js";
+import { ObservationEvent } from "@pkg/shared";
 
 /**
  * Redis publisher for observation events.
@@ -79,21 +80,6 @@ export function getPublisher(): Redis {
   }
 
   return publisherClient;
-}
-
-/**
- * Observation event structure for publishing.
- * Matches the ObservationEventSchema in server. Formerly named ObservationMessage for alignment.
- * A deprecated alias (ObservationMessage) is retained temporarily.
- */
-export interface ObservationEvent {
-  stationId: string;
-  timestamp: string; // ISO 8601 format
-  waveHeightM: number | null;
-  windSpeedMps: number | null;
-  windDirDeg: number | null;
-  waterTempC: number | null;
-  pressureHpa: number | null;
 }
 
 // Deprecated alias (remove after downstream updates)

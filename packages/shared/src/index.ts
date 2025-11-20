@@ -1,4 +1,5 @@
 import { z } from "zod";
+export * from "./events";
 
 export const StationSchema = z.object({
   id: z.string(),
@@ -8,10 +9,11 @@ export const StationSchema = z.object({
 });
 export type Station = z.infer<typeof StationSchema>;
 
+// Database-level observation record (not the streaming event)
 export const ObservationSchema = z.object({
   id: z.string(),
   stationId: z.string(),
-  observedAt: z.string(),
+  observedAt: z.string().datetime(),
   waveHeightM: z.number().nullable().optional(),
   windSpeedMps: z.number().nullable().optional(),
   windDirDeg: z.number().nullable().optional(),
