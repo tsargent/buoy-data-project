@@ -68,6 +68,13 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
 
+      # Constitution 2.2 Test-First Gating: smoke test must exist & pass before full test suite.
+      - name: Smoke test (stream realtime gating)
+        run: pnpm vitest run scripts/smoke/stream-smoke.test.ts || (echo "Smoke test failed - blocking CI" && exit 1)
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+
       - name: Run tests
         run: pnpm test:run
         env:

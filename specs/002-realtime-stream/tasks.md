@@ -107,6 +107,73 @@ Document metrics, logging fields, error shape in `docs/SSE_IMPLEMENTATION.md` be
 
 ---
 
+#### Task 0.5: Shared error response type & schema
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 0.25 hours  
+**Dependencies**: None
+
+**Description**:
+Create `packages/shared/src/errors.ts` exporting `ErrorResponseSchema` and helper `makeError(code,message)` to enforce type-centric error semantics (Constitution 2.1, 2.6).
+
+**Steps**:
+- [ ] Implement Zod schema `{ error: { code: z.enum(['INVALID_REQUEST','SERVICE_UNAVAILABLE','METHOD_NOT_ALLOWED','INTERNAL_ERROR']), message: z.string() } }`.
+- [ ] Export types & helper from `errors.ts` and re-export in `index.ts`.
+- [ ] Replace inline error shapes in server code with shared type (future tasks).
+- [ ] Update spec NFR-Error-Shape if needed.
+
+**Acceptance Criteria**:
+- [ ] ErrorResponse type and schema compile.
+- [ ] Tasks referencing error shape (5.1, 5.2, 3.3) list only allowed codes.
+- [ ] No duplicate ad-hoc error shape definitions.
+
+**Related Requirements**: NFR-Error-Shape, FR-011, FR-012, Constitution 2.1/2.6
+
+---
+
+#### Task 0.6: Observability artifact verification
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 0.25 hours  
+**Dependencies**: Task 0.4
+
+**Description**:
+Append verification checklist to `docs/SSE_IMPLEMENTATION.md` ensuring metrics & log events defined pre-instrumentation.
+
+**Steps**:
+- [ ] Add table: name, type, labels, trigger for each metric including `sse_reconnect_latency_seconds`.
+- [ ] List required log events & fields.
+- [ ] Reference artifact in Tasks 7.1 & 7.2.
+
+**Acceptance Criteria**:
+- [ ] Artifact committed before starting 7.1/7.2.
+- [ ] All metrics & log events listed exactly as implemented later.
+
+**Related Requirements**: NFR-Observability, Constitution 2.3
+
+---
+
+#### Task 0.7: Schema parity tests (events & errors)
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 0.5 hours  
+**Dependencies**: Task 0.1, Task 0.5
+
+**Description**:
+Automated tests verifying Zod schemas key-match TypeScript interfaces for `ConnectionEvent`, `ObservationEvent`, `ErrorResponse`.
+
+**Steps**:
+- [ ] Create `packages/shared/src/__tests__/schema-parity.spec.ts`.
+- [ ] Compare `Object.keys(Schema.shape)` to constant arrays of interface keys.
+- [ ] Fail with clear diff on mismatch.
+
+**Acceptance Criteria**:
+- [ ] Parity test passes initially.
+- [ ] Deliberate key mismatch causes failure locally.
+- [ ] Included in CI test suite.
+
+**Related Requirements**: NFR-Types, Constitution 2.1
+
 ### Phase 1: Server Infrastructure Setup
 
 #### Task 1.0: Define shared event types (moved to Phase 0; see Task 0.1) – placeholder to preserve numbering continuity
@@ -311,6 +378,30 @@ Detect when clients disconnect and properly clean up resources.
 
 ---
 
+#### Task 2.4: Baseline latency & query profiling
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 1 hour  
+**Dependencies**: Task 2.2, Task 1.2
+
+**Description**:
+Capture initial broadcast loop latency and verify absence of N+1 queries before scaling tests.
+
+**Steps**:
+- [ ] Add script `scripts/profile/latency-baseline.ts` to publish ≥50 synthetic events.
+- [ ] Instrument timestamps: subscriber receipt & final write completion.
+- [ ] Compute p50/p95 loop latency; log Prisma query count per broadcast.
+- [ ] Append results to `specs/002-realtime-stream/test-results.md`.
+
+**Acceptance Criteria**:
+- [ ] Loop p95 ≤ 120ms (or variance documented for ADR follow-up).
+- [ ] Query count per event constant (O(1)).
+- [ ] Results committed before Tasks 6.1 & 6.2.
+
+**Related Requirements**: FR-009, NFR-Latency, Constitution 2.5
+
+---
+
 ### Phase 3: Redis Pub/Sub Integration
 
 #### Task 3.1: Subscribe to observations channel in server
@@ -360,6 +451,11 @@ Configure the server to subscribe to the Redis `observations:new` channel on sta
 **Description**:
 Implement the message handler that broadcasts Redis messages to all SSE clients.
 
+**Preconditions**:
+- Task 0.3 smoke test existed and failed before this implementation (commit reference in PR description).
+- Task 0.5 shared ErrorResponse type available.
+- Task 0.7 schema parity tests present (will fail on schema/interface drift).
+
 **Steps**:
 - [ ] Create validation schema for observation messages using Zod:
   ```typescript
@@ -391,6 +487,7 @@ Implement the message handler that broadcasts Redis messages to all SSE clients.
   - Schema validation failures
   - Broadcast failures
 - [ ] Measure and log broadcast latency (from Redis message to SSE send)
+ - [ ] Record broadcast loop latency (subscriber receipt → final write) into `sse_broadcast_latency_ms` histogram
 - [ ] Test end-to-end: publish Redis message → verify SSE clients receive it
 
 **Acceptance Criteria**:
@@ -398,9 +495,10 @@ Implement the message handler that broadcasts Redis messages to all SSE clients.
 - [ ] Event type is `observation`
 - [ ] Payload matches observation schema (FR-004)
 - [ ] Invalid messages logged but don't crash server
-- [ ] Messages delivered within 200ms of Redis publish (FR-009, SC-002)
-- [ ] All connected clients receive identical messages
-- [ ] Broadcast latency is logged for monitoring
+- [ ] End-to-end p95 ≤ 200ms (publish → client receipt)
+- [ ] Loop p95 ≤ 120ms (subscriber receipt → final write)
+- [ ] Smoke test commit history shows red before implementation and green after
+- [ ] Histogram `sse_broadcast_latency_ms` populated
 
 **Related Requirements**: FR-003, FR-004, FR-005, FR-009, SC-002
 
@@ -492,6 +590,10 @@ Set up Redis publisher in the worker for sending observation events.
 **Description**:
 Integrate Redis publishing into the worker job processor after successful observation upserts.
 
+**Preconditions**:
+- Task 0.3 smoke test failing prior to implementation; passes only after publish logic.
+- Task 0.5 ErrorResponse type available.
+
 **Steps**:
 - [ ] Update worker job processor in `apps/worker/src/index.ts`
 - [ ] After successful `prisma.observation.upsert()`:
@@ -525,8 +627,9 @@ Integrate Redis publishing into the worker job processor after successful observ
 - [ ] Worker publishes to `observations:new` after each successful upsert
 - [ ] Payload matches observation schema (FR-004)
 - [ ] Only successful observations are published
-- [ ] Publishing happens within job transaction context
+- [ ] Publishing happens after upsert promise resolves
 - [ ] Job logs show publish count
+- [ ] Publish timestamp logged for latency measurement
 - [ ] End-to-end flow works: NDBC → Worker → DB → Redis → Server → Client
 
 **Related Requirements**: FR-003, FR-004, FR-009
@@ -748,11 +851,11 @@ Verify the system supports multiple simultaneous SSE clients without issues.
 **Acceptance Criteria**:
 - [ ] 10 concurrent clients connect successfully
 - [ ] All clients receive connection events
-- [ ] All clients receive observation events
-- [ ] No data loss or duplication (SC-003)
+- [ ] 100/100 published observation events received by every client (0 data loss)
+- [ ] Loop p95 ≤ 120ms; end-to-end p95 ≤ 200ms
 - [ ] No race conditions in connection registry
 - [ ] Connection count metric is accurate
-- [ ] Memory usage is stable (RSS delta ≤ 10MB over 60min @10 clients)
+- [ ] Memory usage stable (RSS delta ≤ 10MB over 60min @10 clients)
 
 **Related Requirements**: FR-008, SC-003, User Story 2
 
@@ -795,12 +898,11 @@ Test system performance with 50+ concurrent connections.
 
 **Acceptance Criteria**:
 - [ ] Server handles 50+ concurrent clients (SC-003)
-- [ ] Response time remains acceptable (<200ms)
-- [ ] Memory usage is stable (RSS delta ≤ 10MB/hour @50 clients)
-- [ ] No performance degradation with many clients
-- [ ] CPU usage stays under 80%
-- [ ] All events delivered successfully
-- [ ] Load test results documented
+- [ ] 100/100 published observation events received by all clients (0 data loss)
+- [ ] End-to-end p95 ≤ 200ms; loop p95 ≤ 150ms (initial allowance)
+- [ ] Memory usage stable (RSS delta ≤ 10MB/hour @50 clients)
+- [ ] CPU p95 < 70%
+- [ ] Load test results documented (include p50/p95 latencies & data loss = 0)
 
 **Related Requirements**: SC-003, User Story 2
 
@@ -883,7 +985,8 @@ Add Prometheus metrics for monitoring SSE streaming.
   - Record histogram on removeClient (connection duration)
 - [ ] Update broadcast function to record metrics:
   - Increment counter on each broadcast
-  - Measure and record broadcast latency
+  - Measure and record broadcast loop latency
+  - Prepare hook to record reconnect latency events (Task 8.5)
 - [ ] Test metrics appear in `/metrics` endpoint
 - [ ] Verify metrics update correctly
 
@@ -1085,7 +1188,7 @@ Systematically test all success criteria and user story acceptance scenarios.
   - Connect EventSource
   - Measure time to first event
   - Document result
-- [ ] Test SC-002: Observation events within 200ms
+- [ ] Test SC-002: End-to-end p95 ≤ 200ms & loop p95 ≤ 120ms
   - Trigger worker job
   - Measure time from database insert to SSE event
   - Use timestamps in logs
@@ -1095,7 +1198,7 @@ Systematically test all success criteria and user story acceptance scenarios.
   - Trigger worker to publish observation
   - Verify all 10 clients receive event
   - Document result
-- [ ] Test SC-004: Cleanup within 5 seconds
+- [ ] Test SC-004: Cleanup p95 < 5000ms (disconnect log → removal)
   - Connect client
   - Close browser tab
   - Monitor server logs
@@ -1118,9 +1221,9 @@ Systematically test all success criteria and user story acceptance scenarios.
 - [ ] Create test results document in `specs/002-realtime-stream/test-results.md`
 
 **Acceptance Criteria**:
-- [ ] All success criteria pass (SC-001 through SC-006)
+- [ ] All success criteria pass (SC-001 through SC-006 with refined latency & cleanup metrics)
 - [ ] All user story acceptance scenarios pass
-- [ ] Test results documented with measurements
+- [ ] Test results documented (latency histograms, data loss = 0, cleanup p95)
 - [ ] Screenshots captured where applicable
 - [ ] Any issues documented and resolved
 
@@ -1204,6 +1307,28 @@ Test SSE streaming with real browser EventSource API across multiple browsers.
 **Related Requirements**: FR-010, SC-006
 
 ---
+
+#### Task 8.5: Reconnection latency instrumentation & validation
+
+**Priority**: P1 (High)  
+**Estimate**: 1 hour  
+**Dependencies**: Task 2.3, Task 3.2
+
+**Description**:
+Instrument and measure reconnection latency across forced disconnect cycles; expose histogram metric.
+
+**Steps**:
+- [ ] Extend integration test to simulate server restart and capture time until new `connection` event.
+- [ ] Add metric `sse_reconnect_latency_seconds` with buckets (0.5,1,2,3,5,8).
+- [ ] Run ≥20 cycles; compute p50/p95.
+- [ ] Append report section to `test-results.md`.
+
+**Acceptance Criteria**:
+- [ ] p95 reconnection latency ≤ 5s.
+- [ ] Metric visible at `/metrics` endpoint.
+- [ ] Test results include distribution table.
+
+**Related Requirements**: NFR-Reconnection, FR-007
 
 ### Phase 9: Documentation
 
@@ -1372,8 +1497,8 @@ Update project README with SSE information and consider creating an ADR for Redi
 
 ## Task Summary
 
-**Total Tasks**: 32 tasks  
-**Estimated Time**: 48.5 hours
+**Total Tasks**: 37 tasks  
+**Estimated Time**: ~52 hours
 
 ### By Priority:
 
@@ -1383,7 +1508,7 @@ Update project README with SSE information and consider creating an ADR for Redi
 
 ### By Phase:
 
-- **Phase 0**: 4 tasks (2 hours) - Foundations
+-- **Phase 0**: 7 tasks (3.5 hours) - Foundations
 - **Phase 1**: 2 tasks (3.5 hours) - Server infrastructure
 - **Phase 2**: 3 tasks (4.5 hours) - SSE endpoint
 - **Phase 3**: 3 tasks (6 hours) - Redis integration

@@ -1,5 +1,6 @@
 import { z } from "zod";
 export * from "./events";
+export * from "./errors";
 
 export const StationSchema = z.object({
   id: z.string(),

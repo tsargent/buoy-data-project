@@ -77,25 +77,28 @@ Clients automatically reconnect when the connection is interrupted, and the serv
 - **FR-006**: System MUST set appropriate HTTP headers for SSE: `Content-Type: text/event-stream`, `Cache-Control: no-cache`, and `Connection: keep-alive`
 - **FR-007**: System MUST detect client disconnections and clean up associated resources to prevent memory leaks
 - **FR-008**: System MUST support multiple concurrent client connections without data loss or duplication
-- **FR-009**: System MUST deliver observation events to clients within 200ms of the worker processing the observation
+- **FR-009**: System MUST achieve p95 end-to-end latency ≤ 200ms measured from Redis publish timestamp to client receipt of the `observation` event. Broadcast loop latency (Redis subscriber receipt → completion of final client write) p95 MUST be ≤ 120ms. Both latencies MUST be recorded and exposed via metrics (see **NFR-Latency**).
 - **FR-010**: The streaming endpoint MUST be compatible with the browser's native EventSource API and standard SSE clients
 - **FR-011**: System MUST respond with HTTP 500 and close the connection if Redis or database initialization fails during stream setup. Error responses MUST use the standard error shape (see **NFR-Error-Shape**).
 - **FR-012**: System MUST respond with HTTP 400 if the client request is malformed. A request is malformed if the method is not GET, or the `Accept` header explicitly excludes `text/event-stream` (e.g. quality factor q=0). Valid `Accept` includes `text/event-stream` or `*/*`. Non-GET MUST return 405. All error responses MUST use the standard error shape (see **NFR-Error-Shape**).
 
 ### Non-Functional Requirements
 
-- **NFR-Latency**: p95 end-to-end (Redis publish → client receive) latency ≤ 200ms; p50 ≤ 120ms. Measured via `sse_broadcast_latency_ms` histogram plus client-side timestamp comparison in tests.
-- **NFR-Concurrency**: Stable operation (no data loss, no memory leak) with ≥10 concurrent clients and validated scalability at 50 concurrent clients.
-	- Data loss: any missing sequential observation timestamp among clients during a controlled publish sequence.
-	- 10 clients: p95 broadcast latency ≤ 200ms; memory RSS growth ≤ 10MB over 60 minutes (idle + sporadic events).
-	- 50 clients: p95 broadcast latency ≤ 220ms; p50 ≤ 150ms; memory RSS growth ≤ 10MB per hour; zero sustained event delivery failure.
-	- Measurement: latency captured as (client receive timestamp – Redis publish handler start timestamp) recorded in test harness; memory sampled every 5 minutes (RSS) and compared against starting baseline.
-- **NFR-Memory-Stability**: RSS growth ≤ 10MB over 60 minutes with 10 idle clients; ≤ 10MB/hour with 50 active clients; connection objects reclaimed within 5s of disconnect.
-- **NFR-Observability**: Metrics (`sse_connections_total`, `sse_events_sent_total`, `sse_connection_duration_seconds`, `sse_broadcast_latency_ms`) and structured logs (connection, disconnection, broadcast, error) defined pre-implementation and exposed at `/metrics`.
-- **NFR-Error-Shape**: Streaming errors use `{ "error": { "code", "message" } }` with codes `INVALID_REQUEST`, `SERVICE_UNAVAILABLE`.
-- **NFR-Reconnection**: Auto-reconnect succeeds within 5s after transient network/server restart; no historical replay.
-- **NFR-Types**: `ConnectionEvent` and `ObservationEvent` exported from `packages/shared` and imported by server, worker, demo clients; runtime validation mirrors shared types.
-- **NFR-Test-First**: Skeleton failing unit tests for connection manager, schema validation, and SSE formatting created prior to implementation.
+**NFR-Latency**: Two latencies MUST be measured:
+	1. End-to-end (Redis publish timestamp → client receipt) p95 ≤ 200ms; p50 ≤ 120ms.
+	2. Broadcast loop (Redis subscriber receipt → final write completion) p95 ≤ 120ms; p50 ≤ 80ms.
+	Metrics: `sse_broadcast_latency_ms` (loop latency) and client-side measurement captured in test harness appended to test results. Start timestamps: (a) worker publish call (pre-`redis.publish`), (b) server subscriber handler start. End timestamps: (a) client EventSource `observation` event time, (b) after final successful write in broadcast loop.
+**NFR-Concurrency**: Stable operation validated with ≥10 and ≥50 concurrent clients.
+	- Data loss definition: For a controlled sequence of N published observations (N ≥ 100), each client MUST receive all N (EventsReceived == EventsPublished). Any missing sequential observation timestamp constitutes data loss; threshold is zero.
+	- 10 clients: Broadcast loop p95 ≤ 120ms; end-to-end p95 ≤ 200ms; RSS growth ≤ 10MB over 60 minutes (idle + sporadic events).
+	- 50 clients: End-to-end p95 ≤ 200ms; broadcast loop p95 ≤ 150ms (initial allowance); RSS growth ≤ 10MB/hour; 0 data loss; CPU p95 < 70%.
+	- Measurement: Harness logs publish sequence number and per-client receipt counts; memory sampled every 5 minutes.
+**NFR-Memory-Stability**: RSS growth ≤ 10MB over 60 minutes with 10 idle clients; ≤ 10MB/hour with 50 active clients; connection objects reclaimed within 5s of disconnect (disconnect log timestamp to removal timestamp < 5000ms).
+**NFR-Observability**: Metrics (`sse_connections_total`, `sse_events_sent_total`, `sse_connection_duration_seconds`, `sse_broadcast_latency_ms`, `sse_reconnect_latency_seconds`) and structured logs (connection, disconnection, broadcast, error, reconnect) defined pre-implementation and exposed at `/metrics`.
+**NFR-Error-Shape**: Streaming errors use `{ "error": { "code": string, "message": string } }` with enumerated codes: `INVALID_REQUEST`, `SERVICE_UNAVAILABLE`, `METHOD_NOT_ALLOWED`, `INTERNAL_ERROR`. All streaming-related 4xx/5xx statuses MUST use one of these codes.
+**NFR-Reconnection**: Auto-reconnect p95 latency (disconnect → receipt of next `connection` event) ≤ 5s measured over ≥20 forced disconnect cycles; no historical replay; metric `sse_reconnect_latency_seconds` histogram captured.
+**NFR-Types**: `ConnectionEvent`, `ObservationEvent`, and `ErrorResponse` exported from `packages/shared`; Zod schemas MUST remain key-parity with TypeScript interfaces verified by automated parity tests.
+**NFR-Test-First**: Failing smoke test (stream connect + observation) MUST exist (red) before implementing broadcast/publish logic; CI enforces ordering.
 
 ### Key Entities
 
@@ -108,8 +111,8 @@ Clients automatically reconnect when the connection is interrupted, and the serv
 ### Measurable Outcomes
 
 - **SC-001**: Browser clients can establish a streaming connection and receive a confirmation event within 100ms of connecting
-- **SC-002**: Observation events are delivered to all connected clients within 200ms of being processed by the worker
-- **SC-003**: The system maintains stable connections with at least 10 concurrent clients without data loss
-- **SC-004**: Connection cleanup occurs within 5 seconds of client disconnection, preventing resource leaks
+- **SC-002**: End-to-end p95 latency ≤ 200ms (publish → client receipt) and broadcast loop p95 ≤ 120ms (subscriber receipt → final write) across ≥100 events; both histograms recorded.
+- **SC-003**: 10 concurrent clients receive 100/100 test observations (0 data loss) with broadcast loop p95 ≤ 120ms and RSS growth ≤ 10MB over 60 minutes.
+- **SC-004**: Connection cleanup duration (disconnect event log → removal) < 5000ms p95 across ≥50 disconnect cycles; no residual references.
 - **SC-005**: Status codes: 200 (success), 400 (invalid/malformed), 405 (non-GET), 500 (infrastructure). Errors use `{ "error": { "code", "message" } }`.
 - **SC-006**: Audio/visual clients can successfully parse and utilize observation events for real-time sonification and visualization
