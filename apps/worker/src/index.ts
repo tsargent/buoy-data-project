@@ -2,7 +2,7 @@ import { Worker, Queue } from "bullmq";
 import { env } from "./env.js";
 import { prisma } from "../lib/prisma.js";
 import { parseNDBCFile } from "../lib/ndbc-parser.js";
-import { publishObservation } from "../lib/redis-publisher.js";
+import { publishObservation } from "../lib/redis-publisher";
 
 // Redis connection from env
 const connection = {
@@ -86,6 +86,7 @@ const worker = new Worker(
           await publishObservation({
             stationId,
             timestamp: observedAt.toISOString(),
+            publishedAt: new Date().toISOString(),
             waveHeightM: obs.waveHeight,
             windSpeedMps: obs.windSpeed,
             windDirDeg: obs.windDirection,

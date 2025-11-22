@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import { env } from "../src/env.js";
 import { logger } from "./logger.js";
-import { ObservationEvent, ObservationEventSchema } from "@pkg/shared";
+import { ObservationEventSchema } from "@pkg/shared";
 
 /**
  * Redis publisher for observation events.
@@ -82,9 +82,6 @@ export function getPublisher(): Redis {
   return publisherClient;
 }
 
-// Deprecated alias (remove after downstream updates)
-export type ObservationMessage = ObservationEvent;
-
 /**
  * Publish an observation to Redis for real-time streaming.
  *
@@ -94,29 +91,30 @@ export type ObservationMessage = ObservationEvent;
  * Uses retry logic for transient failures. Logs errors but doesn't throw
  * to prevent database insert failures from being rolled back.
  */
-export async function publishObservation(
-  observation: ObservationEvent
-): Promise<void> {
+export async function publishObservation(observation: unknown): Promise<void> {
   const publisher = getPublisher();
-  // Validate against shared schema (type-centric contract enforcement)
-  // If validation fails, log and abort publish without retries.
-  try {
-    ObservationEventSchema.parse(observation);
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
+  // Ensure publishedAt exists (defensive in case caller omitted instrumentation)
+  const enriched: Record<string, unknown> = {
+    ...(typeof observation === "object" && observation !== null
+      ? (observation as Record<string, unknown>)
+      : {}),
+    publishedAt: new Date().toISOString(),
+  };
+
+  const validation = ObservationEventSchema.safeParse(enriched);
+  if (!validation.success) {
     logger.error(
       {
         event: "publish_validation_failed",
         channel: REDIS_CHANNEL,
-        stationId: observation.stationId,
-        error: errorMsg,
+        error: validation.error.format(),
       },
       "Observation schema validation failed; skipping publish"
     );
-    return; // Do not attempt publish retries for invalid payload
+    return;
   }
-
-  const message = JSON.stringify(observation);
+  const event = validation.data;
+  const message = JSON.stringify(event);
 
   let lastError: Error | null = null;
 
@@ -129,7 +127,7 @@ export async function publishObservation(
         {
           event: "observation_published",
           channel: REDIS_CHANNEL,
-          stationId: observation.stationId,
+          stationId: event.stationId,
           attempt,
         },
         "Published observation to Redis"
@@ -145,7 +143,7 @@ export async function publishObservation(
           {
             event: "publish_retry",
             channel: REDIS_CHANNEL,
-            stationId: observation.stationId,
+            stationId: event.stationId,
             attempt,
             maxAttempts: MAX_PUBLISH_RETRIES,
             delayMs: delay,
@@ -163,7 +161,7 @@ export async function publishObservation(
     {
       event: "publish_failed",
       channel: REDIS_CHANNEL,
-      stationId: observation.stationId,
+      stationId: event.stationId,
       maxAttempts: MAX_PUBLISH_RETRIES,
       error: lastError?.message,
     },

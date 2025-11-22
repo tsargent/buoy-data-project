@@ -416,15 +416,15 @@ Capture initial broadcast loop latency and verify absence of N+1 queries before 
 Add `publishedAt` to worker publish payloads and ensure both worker publish and server subscriber use the shared `ObservationEventSchema` from `packages/shared` (no inline schemas). Enables authoritative end-to-end latency measurement and enforces constitution 2.1 (Type-Centric Contracts).
 
 **Steps**:
-- [ ] Worker: include `publishedAt: new Date().toISOString()` in Redis payload.
-- [ ] Server subscriber: import `ObservationEventSchema` and validate via `.parse()`.
-- [ ] Remove/avoid any local observation schema definitions.
+- [X] Worker: include `publishedAt: new Date().toISOString()` in Redis payload.
+- [X] Server subscriber: import `ObservationEventSchema` and validate via `.parse()`.
+- [X] Remove/avoid any local observation schema definitions.
 - [ ] Client harness records `receivedAt` for each observation event.
 - [ ] Smoke/baseline scripts verify presence of `publishedAt`.
 
 **Acceptance Criteria**:
-- [ ] publishedAt present in all Redis observation messages.
-- [ ] No duplicate local observation schemas.
+- [X] publishedAt present in all Redis observation messages.
+- [X] No duplicate local observation schemas.
 - [ ] Parity test (Task 0.7) passes.
 - [ ] End-to-end latency values derivable from captured artifact.
 

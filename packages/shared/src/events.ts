@@ -17,6 +17,9 @@ export type ConnectionEvent = z.infer<typeof ConnectionEventSchema>;
 export const ObservationEventSchema = z.object({
   stationId: z.string(),
   timestamp: z.string().datetime(),
+  // publishedAt is the server-side emission timestamp used for end-to-end latency measurement
+  // Added per Task 2.5 (NFR-Latency). Always ISO 8601.
+  publishedAt: z.string().datetime(),
   waveHeightM: z.number().nullable(),
   windSpeedMps: z.number().nullable(),
   windDirDeg: z.number().nullable(),
