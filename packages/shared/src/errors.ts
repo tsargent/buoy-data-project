@@ -16,6 +16,9 @@ export const ErrorResponseSchema = z.object({
 
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
-export function makeError(code: z.infer<typeof ErrorCodeEnum>, message: string): ErrorResponse {
+export function makeError(
+  code: z.infer<typeof ErrorCodeEnum>,
+  message: string
+): ErrorResponse {
   return { error: { code, message } };
 }

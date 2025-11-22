@@ -76,10 +76,14 @@ Minimal script validating stream viability (connect + single observation event).
 - [ ] Assert receipt of one `observation` event ≤ 2000ms
 
 **Acceptance Criteria**:
+
+- [ ] Test Category: E2E Smoke
+- [ ] Initial CI run (ID/URL recorded) shows failing smoke test prior to Tasks 2.2 / 3.2 merge (Red)
+- [ ] Subsequent CI run after Tasks 2.2 / 3.2 shows smoke test passing (Green) with both run IDs documented (Constitution 2.2)
+- [ ] Commit message for Task 3.2 references failing run ID
 - [ ] Smoke test passes locally
 - [ ] Fails descriptively if no event received
-- [ ] Added to PR CI pipeline
-- [ ] Was created and failed prior to implementation of Tasks 2.2 and 3.2 (evidence in commit history)
+- [ ] Added to PR CI pipeline enforcing sequence
 
 **Related Requirements**: SC-001, SC-002, Constitution Test Categories (E2E)
 
@@ -264,18 +268,17 @@ Build a connection manager to track active SSE clients and broadcast events to a
 
 ### Phase 2: SSE Endpoint Implementation
 
-#### Task 2.1: Create SSE route handler
+#### Task 2.1: Extend existing observations route with /stream
 
 **Priority**: P0 (Blocker)  
 **Estimate**: 2 hours  
 **Dependencies**: Task 1.2
 
 **Description**:
-Implement the `/v1/observations/stream` endpoint with proper SSE headers and connection handling.
+Implement the `/v1/observations/stream` endpoint by extending the existing `apps/server/src/routes/observations.ts` file (DO NOT create a separate `stream.ts`). This prevents duplicate route registration and aligns with constitution principle 2.4 (Simplicity).
 
 **Steps**:
-- [ ] Create `apps/server/src/routes/stream.ts` (or add to `observations.ts`)
-- [ ] Implement `GET /v1/observations/stream` route handler
+- [ ] Add `GET /v1/observations/stream` handler inside `observations.ts`
 - [ ] Set SSE response headers:
   - `Content-Type: text/event-stream`
   - `Cache-Control: no-cache`
@@ -378,7 +381,7 @@ Detect when clients disconnect and properly clean up resources.
 
 ---
 
-#### Task 2.4: Baseline latency & query profiling
+#### Task 2.4: Baseline latency & query profiling (loop + end-to-end)
 
 **Priority**: P0 (Blocker)  
 **Estimate**: 1 hour  
@@ -388,17 +391,44 @@ Detect when clients disconnect and properly clean up resources.
 Capture initial broadcast loop latency and verify absence of N+1 queries before scaling tests.
 
 **Steps**:
-- [ ] Add script `scripts/profile/latency-baseline.ts` to publish ≥50 synthetic events.
-- [ ] Instrument timestamps: subscriber receipt & final write completion.
-- [ ] Compute p50/p95 loop latency; log Prisma query count per broadcast.
-- [ ] Append results to `specs/002-realtime-stream/test-results.md`.
+- [ ] Add script `scripts/profile/latency-baseline.ts` to publish ≥50 synthetic events embedding a `publishedAt` timestamp before each Redis publish.
+- [ ] Instrument loop latency: subscriber handler start & final successful client write.
+- [ ] Instrument end-to-end latency: client harness captures `receivedAt` for each observation event; compute `endToEndMs = receivedAt - publishedAt`.
+- [ ] Record Prisma query count per broadcast (O(1) expected).
+- [ ] Append JSON samples `{ publishedAt, receivedAt, endToEndMs, loopMs, prismaQueries }` to `specs/002-realtime-stream/test-results.md`.
+- [ ] Summarize p50/p95 for loopMs and endToEndMs in artifact.
 
 **Acceptance Criteria**:
-- [ ] Loop p95 ≤ 120ms (or variance documented for ADR follow-up).
+- [ ] Loop p95 ≤ 120ms baseline documented (variance flagged if exceeded).
+- [ ] End-to-end p95 ≤ 200ms baseline documented.
 - [ ] Query count per event constant (O(1)).
-- [ ] Results committed before Tasks 6.1 & 6.2.
+- [ ] JSON artifact committed before Tasks 6.1 & 6.2.
 
 **Related Requirements**: FR-009, NFR-Latency, Constitution 2.5
+
+#### Task 2.5: End-to-end latency instrumentation & shared schema enforcement
+
+**Priority**: P0 (Blocker)  
+**Estimate**: 0.5 hours  
+**Dependencies**: Task 2.2, Task 0.7
+
+**Description**:
+Add `publishedAt` to worker publish payloads and ensure both worker publish and server subscriber use the shared `ObservationEventSchema` from `packages/shared` (no inline schemas). Enables authoritative end-to-end latency measurement and enforces constitution 2.1 (Type-Centric Contracts).
+
+**Steps**:
+- [ ] Worker: include `publishedAt: new Date().toISOString()` in Redis payload.
+- [ ] Server subscriber: import `ObservationEventSchema` and validate via `.parse()`.
+- [ ] Remove/avoid any local observation schema definitions.
+- [ ] Client harness records `receivedAt` for each observation event.
+- [ ] Smoke/baseline scripts verify presence of `publishedAt`.
+
+**Acceptance Criteria**:
+- [ ] publishedAt present in all Redis observation messages.
+- [ ] No duplicate local observation schemas.
+- [ ] Parity test (Task 0.7) passes.
+- [ ] End-to-end latency values derivable from captured artifact.
+
+**Related Requirements**: FR-009, NFR-Latency, NFR-Types
 
 ---
 
@@ -442,7 +472,7 @@ Configure the server to subscribe to the Redis `observations:new` channel on sta
 
 ---
 
-#### Task 3.2: Broadcast messages to SSE clients
+#### Task 3.2: Broadcast messages (shared schema + initial metrics)
 
 **Priority**: P0 (Blocker)  
 **Estimate**: 2.5 hours  
@@ -457,48 +487,27 @@ Implement the message handler that broadcasts Redis messages to all SSE clients.
 - Task 0.7 schema parity tests present (will fail on schema/interface drift).
 
 **Steps**:
-- [ ] Create validation schema for observation messages using Zod:
-  ```typescript
-  const ObservationSchema = z.object({
-    stationId: z.string(),
-    timestamp: z.string().datetime(),
-    waveHeightM: z.number().nullable(),
-    windSpeedMps: z.number().nullable(),
-    windDirDeg: z.number().nullable(),
-    waterTempC: z.number().nullable(),
-    pressureHpa: z.number().nullable()
-  });
-  ```
-- [ ] Implement message handler:
-  ```typescript
-  subscriber.on('message', (channel, message) => {
-    // Parse JSON
-    // Validate schema
-    // Broadcast to clients
-  });
-  ```
-- [ ] In message handler:
-  - Parse JSON message payload
-  - Validate observation schema (log error if invalid)
-  - Call `connectionManager.broadcastToAll('observation', observationData)`
-  - Log broadcast events (debug level) with client count
-- [ ] Add error handling for:
-  - Invalid JSON
-  - Schema validation failures
-  - Broadcast failures
-- [ ] Measure and log broadcast latency (from Redis message to SSE send)
- - [ ] Record broadcast loop latency (subscriber receipt → final write) into `sse_broadcast_latency_ms` histogram
-- [ ] Test end-to-end: publish Redis message → verify SSE clients receive it
+
+- [ ] Import `ObservationEventSchema` from `packages/shared` (no inline schema code).
+- [ ] Implement subscriber handler: parse JSON → validate with shared schema → broadcast.
+- [ ] Measure loop latency (subscriber handler start → final client write) and record in `sse_broadcast_latency_ms`.
+- [ ] Increment `sse_events_sent_total` (label `event_type="observation"`) for each observation; connection events covered in Task 2.2 (`event_type="connection"`).
+- [ ] On JSON/schema error: log structured error and increment error counter `sse_broadcast_errors_total` (label `reason` = `json_parse` | `schema_invalid` | `write_failed`).
+- [ ] Log broadcast with stationId, clientCount, loopMs.
+- [ ] Verify end-to-end latency correlation using publishedAt/receivedAt.
+
 
 **Acceptance Criteria**:
-- [ ] Redis messages trigger broadcasts to all SSE clients
-- [ ] Event type is `observation`
-- [ ] Payload matches observation schema (FR-004)
-- [ ] Invalid messages logged but don't crash server
-- [ ] End-to-end p95 ≤ 200ms (publish → client receipt)
-- [ ] Loop p95 ≤ 120ms (subscriber receipt → final write)
-- [ ] Smoke test commit history shows red before implementation and green after
-- [ ] Histogram `sse_broadcast_latency_ms` populated
+
+- [ ] Broadcast uses shared schema (no inline schema definitions).
+- [ ] Redis messages trigger broadcasts to all SSE clients.
+- [ ] Error counter increments on invalid messages; server remains stable.
+- [ ] Loop p95 ≤ 120ms baseline measured (Task 2.4 artifact).
+- [ ] End-to-end latency artifact populated.
+- [ ] `sse_events_sent_total` (observation) and `sse_broadcast_latency_ms` show samples.
+- [ ] `sse_broadcast_errors_total` present (0 for normal run; >0 in induced negative test) with labeled reason.
+- [ ] Smoke test documented red → green (CI run IDs referenced).
+
 
 **Related Requirements**: FR-003, FR-004, FR-005, FR-009, SC-002
 
@@ -652,8 +661,9 @@ Ensure Redis publish failures don't prevent database inserts from succeeding.
   - Increment failed publish counter
   - Don't throw error (allow job to succeed)
 - [ ] Add retry logic for transient failures:
-  - Retry up to 3 times with exponential backoff (100ms, 200ms, 400ms)
-  - Only for network errors, not validation errors
+  - Backoff schedule (attempts 1..3): 100ms, 200ms, 400ms (no jitter)
+  - Abort after 3 attempts; log final failure with `attempts=3`
+  - Only network/connection errors retried; schema/type errors skipped
 - [ ] Add metric for publish success/failure rate
 - [ ] Test failure scenarios:
   - Stop Redis before worker runs
@@ -662,10 +672,13 @@ Ensure Redis publish failures don't prevent database inserts from succeeding.
   - Verify job completes successfully
 
 **Acceptance Criteria**:
+
 - [ ] Redis publish failures don't prevent database insert
 - [ ] Errors are logged with full context
 - [ ] Worker continues processing subsequent observations
-- [ ] Transient failures are retried (max 3 attempts)
+- [ ] Transient failures retried exactly 3 attempts with defined backoff schedule
+- [ ] Successful retry emits log showing attempt number <3
+- [ ] Permanent failures logged once after final attempt (no unbounded loops)
 - [ ] Permanent failures are logged but don't crash worker
 - [ ] Publish failure rate is tracked via metrics
 
@@ -940,65 +953,28 @@ Implement a memory profiling script to sample RSS at 5-minute intervals during 6
 #### Task 7.1: Add SSE-specific metrics
 
 **Priority**: P1 (High)  
-**Estimate**: 1.5 hours  
-**Dependencies**: Task 1.2
+**Estimate**: 1 hour  
+**Dependencies**: Task 3.2, Task 2.4
 
 **Description**:
-Add Prometheus metrics for monitoring SSE streaming.
+Validate correctness of previously declared & instrumented metrics (no new metric creation). Confirm latency & error counters populated and histograms producing expected distributions.
 
 **Steps**:
-- [ ] Update `apps/server/lib/metrics.ts` to add:
-  - `sse_connections_total` (Gauge) - current active connections
-    ```typescript
-    new promClient.Gauge({
-      name: 'sse_connections_total',
-      help: 'Number of active SSE connections'
-    })
-    ```
-  - `sse_events_sent_total` (Counter) - total events broadcast
-    ```typescript
-    new promClient.Counter({
-      name: 'sse_events_sent_total',
-      help: 'Total number of SSE events sent',
-      labelNames: ['event_type']
-    })
-    ```
-  - `sse_connection_duration_seconds` (Histogram) - connection lifetime
-    ```typescript
-    new promClient.Histogram({
-      name: 'sse_connection_duration_seconds',
-      help: 'Duration of SSE connections in seconds',
-      buckets: [1, 10, 30, 60, 300, 600, 1800, 3600]
-    })
-    ```
-  - `sse_broadcast_latency_ms` (Histogram) - time to broadcast to all clients
-    ```typescript
-    new promClient.Histogram({
-      name: 'sse_broadcast_latency_ms',
-      help: 'Time to broadcast event to all clients in milliseconds',
-      buckets: [1, 5, 10, 25, 50, 100, 250, 500]
-    })
-    ```
-- [ ] Update ConnectionManager to record metrics:
-  - Increment gauge on addClient
-  - Decrement gauge on removeClient
-  - Record histogram on removeClient (connection duration)
-- [ ] Update broadcast function to record metrics:
-  - Increment counter on each broadcast
-  - Measure and record broadcast loop latency
-  - Prepare hook to record reconnect latency events (Task 8.5)
-- [ ] Test metrics appear in `/metrics` endpoint
-- [ ] Verify metrics update correctly
+- [ ] Query `/metrics` and snapshot all `sse_*` metrics.
+- [ ] Assert presence: connections_total, events_sent_total, connection_duration_seconds, broadcast_latency_ms, reconnect_latency_seconds, broadcast_errors_total.
+- [ ] Generate ≥100 observation events; capture p95 loop latency from histogram (cross-check Task 2.4 artifact).
+- [ ] Induce one parse failure to verify `sse_broadcast_errors_total{reason="json_parse"}` increments.
+- [ ] Document metric sample excerpt in `specs/002-realtime-stream/test-results.md`.
 
 **Acceptance Criteria**:
-- [ ] All new metrics appear in `/metrics` endpoint
-- [ ] Counters increment correctly
-- [ ] Gauge reflects current connection count accurately
-- [ ] Histograms track distributions correctly
-- [ ] Metrics are scrapable by Prometheus
-- [ ] No performance impact from metrics collection
 
-**Related Requirements**: Observability and monitoring
+- [ ] All required metrics present (none missing, none duplicated).
+- [ ] Histograms have >0 samples in appropriate buckets.
+- [ ] p95 loop latency ≤ 120ms baseline confirmed.
+- [ ] Error counter increments only for induced failure.
+- [ ] Snapshot committed before Phase 8 expansion.
+
+**Related Requirements**: FR-009, NFR-Observability, Constitution 2.3
 
 ---
 
@@ -1106,6 +1082,8 @@ Write unit tests for core SSE functionality.
 - [ ] Run tests: `pnpm --filter server test`
 
 **Acceptance Criteria**:
+
+- [ ] Test Category: Unit
 - [ ] All unit tests pass
 - [ ] Code coverage >80% for new code
 - [ ] Tests are fast (<5 seconds total)
@@ -1162,6 +1140,8 @@ Test the full integration: worker → Redis → server → clients.
 - [ ] Document integration test setup and results
 
 **Acceptance Criteria**:
+
+- [ ] Test Category: Integration
 - [ ] Full worker → Redis → server → client flow works
 - [ ] All user story acceptance scenarios pass
 - [ ] Reconnection works correctly
@@ -1221,6 +1201,8 @@ Systematically test all success criteria and user story acceptance scenarios.
 - [ ] Create test results document in `specs/002-realtime-stream/test-results.md`
 
 **Acceptance Criteria**:
+
+- [ ] Test Category: Validation
 - [ ] All success criteria pass (SC-001 through SC-006 with refined latency & cleanup metrics)
 - [ ] All user story acceptance scenarios pass
 - [ ] Test results documented (latency histograms, data loss = 0, cleanup p95)
@@ -1295,6 +1277,8 @@ Test SSE streaming with real browser EventSource API across multiple browsers.
 - [ ] Document browser compatibility results
 
 **Acceptance Criteria**:
+
+- [ ] Test Category: Cross-Browser
 - [ ] Works in Chrome (desktop)
 - [ ] Works in Firefox (desktop)
 - [ ] Works in Safari (desktop)
@@ -1324,6 +1308,8 @@ Instrument and measure reconnection latency across forced disconnect cycles; exp
 - [ ] Append report section to `test-results.md`.
 
 **Acceptance Criteria**:
+
+- [ ] Test Category: Integration / Performance
 - [ ] p95 reconnection latency ≤ 5s.
 - [ ] Metric visible at `/metrics` endpoint.
 - [ ] Test results include distribution table.

@@ -84,21 +84,28 @@ Clients automatically reconnect when the connection is interrupted, and the serv
 
 ### Non-Functional Requirements
 
-**NFR-Latency**: Two latencies MUST be measured:
-	1. End-to-end (Redis publish timestamp → client receipt) p95 ≤ 200ms; p50 ≤ 120ms.
-	2. Broadcast loop (Redis subscriber receipt → final write completion) p95 ≤ 120ms; p50 ≤ 80ms.
-	Metrics: `sse_broadcast_latency_ms` (loop latency) and client-side measurement captured in test harness appended to test results. Start timestamps: (a) worker publish call (pre-`redis.publish`), (b) server subscriber handler start. End timestamps: (a) client EventSource `observation` event time, (b) after final successful write in broadcast loop.
+**NFR-Latency**: Two latencies MUST be measured with explicit instrumentation and tiered targets:
+
+ 1. End-to-end latency (worker publish → client receipt). Worker MUST include a `publishedAt` ISO 8601 timestamp in each Redis payload prior to `publish`. Client harness records `receivedAt` when the EventSource handler fires. End-to-end latency = `receivedAt - publishedAt`. Target: p95 ≤ 200ms; p50 ≤ 120ms for all tested client counts.
+ 2. Broadcast loop latency (Redis subscriber handler start → final successful client write). Baseline (≤10 clients): p95 ≤ 120ms; p50 ≤ 80ms. Scaling scenario (≥50 clients): temporary allowance p95 ≤ 150ms (optimization goal to restore ≤120ms); p50 ≤ 100ms.
+
+ Metrics: `sse_broadcast_latency_ms` (loop latency histogram) and an end-to-end latency JSON artifact appended to `specs/002-realtime-stream/test-results.md` capturing `{publishedAt, receivedAt, endToEndMs, loopMs, clientCount}` samples.
+ Instrumentation points: (a) Worker sets `publishedAt`; (b) Server marks subscriber handler start timestamp; (c) Server records loop completion timestamp after final write; (d) Client harness captures `receivedAt`.
+**Latency Harmonization**: These tiered targets unify FR-009 and NFR-Concurrency; any exceedance of scaling allowance MUST trigger optimization or ADR.
 **NFR-Concurrency**: Stable operation validated with ≥10 and ≥50 concurrent clients.
 	- Data loss definition: For a controlled sequence of N published observations (N ≥ 100), each client MUST receive all N (EventsReceived == EventsPublished). Any missing sequential observation timestamp constitutes data loss; threshold is zero.
 	- 10 clients: Broadcast loop p95 ≤ 120ms; end-to-end p95 ≤ 200ms; RSS growth ≤ 10MB over 60 minutes (idle + sporadic events).
-	- 50 clients: End-to-end p95 ≤ 200ms; broadcast loop p95 ≤ 150ms (initial allowance); RSS growth ≤ 10MB/hour; 0 data loss; CPU p95 < 70%.
-	- Measurement: Harness logs publish sequence number and per-client receipt counts; memory sampled every 5 minutes.
+ 
+- 50 clients: End-to-end p95 ≤ 200ms; broadcast loop p95 ≤ 150ms (initial allowance); RSS growth ≤ 10MB/hour; 0 data loss; CPU p95 < 70%.
+- Measurement: Harness logs publish sequence number and per-client receipt counts; memory sampled every 5 minutes.
 **NFR-Memory-Stability**: RSS growth ≤ 10MB over 60 minutes with 10 idle clients; ≤ 10MB/hour with 50 active clients; connection objects reclaimed within 5s of disconnect (disconnect log timestamp to removal timestamp < 5000ms).
-**NFR-Observability**: Metrics (`sse_connections_total`, `sse_events_sent_total`, `sse_connection_duration_seconds`, `sse_broadcast_latency_ms`, `sse_reconnect_latency_seconds`) and structured logs (connection, disconnection, broadcast, error, reconnect) defined pre-implementation and exposed at `/metrics`.
+**NFR-Observability**: Metrics (`sse_connections_total`, `sse_events_sent_total`, `sse_connection_duration_seconds`, `sse_broadcast_latency_ms`, `sse_reconnect_latency_seconds`, `sse_broadcast_errors_total`) and structured logs (connection, disconnection, broadcast, error, reconnect) defined pre-implementation and exposed at `/metrics`.
+  - `sse_broadcast_errors_total` (Counter, labels: `reason` = `json_parse` | `schema_invalid` | `write_failed`): increments once per failed broadcast attempt cause.
+  - All metrics MUST be declared before implementing Tasks 3.2/4.2 (Constitution 2.3) and verified in Task 7.1 (refined role: validation only).
 **NFR-Error-Shape**: Streaming errors use `{ "error": { "code": string, "message": string } }` with enumerated codes: `INVALID_REQUEST`, `SERVICE_UNAVAILABLE`, `METHOD_NOT_ALLOWED`, `INTERNAL_ERROR`. All streaming-related 4xx/5xx statuses MUST use one of these codes.
 **NFR-Reconnection**: Auto-reconnect p95 latency (disconnect → receipt of next `connection` event) ≤ 5s measured over ≥20 forced disconnect cycles; no historical replay; metric `sse_reconnect_latency_seconds` histogram captured.
-**NFR-Types**: `ConnectionEvent`, `ObservationEvent`, and `ErrorResponse` exported from `packages/shared`; Zod schemas MUST remain key-parity with TypeScript interfaces verified by automated parity tests.
-**NFR-Test-First**: Failing smoke test (stream connect + observation) MUST exist (red) before implementing broadcast/publish logic; CI enforces ordering.
+**NFR-Types**: `ConnectionEvent`, `ObservationEvent`, and `ErrorResponse` exported from `packages/shared`; Zod schemas MUST remain key-parity with TypeScript interfaces verified by automated parity tests. All validation of observation events (publisher & subscriber) MUST use the shared `ObservationEventSchema`—no locally duplicated schemas are permitted; parity test (Task 0.7) enforces alignment.
+**NFR-Test-First**: Failing smoke test (stream connect + observation) MUST exist (red) before implementing broadcast/publish logic; CI enforces ordering. Evidence MUST include at least one CI run ID (e.g. GitHub Actions run URL) showing the failing smoke test prior to merging Tasks 2.2 and 3.2, and a subsequent passing run after implementation (Red → Green). Commit messages for Tasks 2.2 and 3.2 MUST reference the initial failing run ID to satisfy Constitution 2.2.
 
 ### Key Entities
 

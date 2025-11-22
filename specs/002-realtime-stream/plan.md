@@ -24,7 +24,7 @@
 ┌────────────────────────────┼─────────────────────────────────┐
 │                  Server (Fastify) - apps/server              │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │  SSE Route Handler: GET /v1/observations/stream        │  │
+│  │  SSE Route Handler: GET /v1/observations/stream        │  │ (implemented within existing observations.ts; no separate stream.ts file)
 │  │  • Manages connection registry (Set<Response>)         │  │
 │  │  • Sends connection event on connect                   │  │
 │  │  │  • Broadcasts observation events to all clients     │  │
@@ -111,11 +111,19 @@
 
 Defining metrics, logging fields, and tracing prior to coding satisfies constitution principles (Test-First & Observability as design input).
 
-Metrics (Prometheus):
+Metrics (Prometheus) – declared pre-implementation (Constitution 2.3):
 - `sse_connections_total` (Gauge): Active SSE connections.
 - `sse_events_sent_total` (Counter, label `event_type`): Counts `connection` and `observation` events.
 - `sse_connection_duration_seconds` (Histogram): Lifetime of connections (buckets: 1,10,30,60,300,600,1800,3600).
 - `sse_broadcast_latency_ms` (Histogram): Time from Redis message receipt to last client write (buckets: 1,5,10,25,50,100,250,500).
+- `sse_reconnect_latency_seconds` (Histogram): Time from forced disconnect/server restart to next received `connection` event (buckets: 0.5,1,2,3,5,8).
+- `sse_broadcast_errors_total` (Counter, label `reason` = `json_parse` | `schema_invalid` | `write_failed`): Broadcast failures segmented by failure type.
+
+Instrumentation Sequence:
+
+ - Tasks 2.2 / 3.2 establish events & latency/error counters.
+ - Task 2.4 captures baseline latency artifacts.
+ - Task 7.1 refines & validates correctness (no new metric creation).
 
 Structured Log Events (JSON):
 - `sse_client_connected` { connectionCount }

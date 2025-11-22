@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  ConnectionEventSchema,
-  ObservationEventSchema,
-} from "../events";
+import { ConnectionEventSchema, ObservationEventSchema } from "../events";
 import { ErrorResponseSchema, ErrorCodeEnum } from "../errors";
 
 // Interface keys mirrored via constants to enable runtime parity checks
@@ -41,17 +38,20 @@ describe("Schema parity", () => {
 
   it("ErrorResponse inner error object key parity", () => {
     const errorObj = ErrorResponseSchema.shape.error; // z.ZodObject
-    const innerShape: Record<string, unknown> = (errorObj as typeof errorObj).shape;
+    const innerShape: Record<string, unknown> = (errorObj as typeof errorObj)
+      .shape;
     const innerKeys = keysOfShape(innerShape);
     expect(innerKeys.sort()).toEqual([...ErrorInnerKeys].sort());
   });
 
   it("Error codes enumeration contains expected codes", () => {
-    expect(ErrorCodeEnum.options.sort()).toEqual([
-      "INVALID_REQUEST",
-      "SERVICE_UNAVAILABLE",
-      "METHOD_NOT_ALLOWED",
-      "INTERNAL_ERROR",
-    ].sort());
+    expect(ErrorCodeEnum.options.sort()).toEqual(
+      [
+        "INVALID_REQUEST",
+        "SERVICE_UNAVAILABLE",
+        "METHOD_NOT_ALLOWED",
+        "INTERNAL_ERROR",
+      ].sort()
+    );
   });
 });
