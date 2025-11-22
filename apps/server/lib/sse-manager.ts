@@ -1,5 +1,10 @@
 import type { FastifyReply } from "fastify";
 import { logger } from "./logger.js";
+import {
+  sseConnectionsGauge,
+  sseEventsSentCounter,
+  sseConnectionDurationHistogram,
+} from "./metrics.js";
 
 /**
  * ConnectionManager tracks active SSE client connections and provides
@@ -12,6 +17,7 @@ class ConnectionManager {
   addClient(reply: FastifyReply): void {
     this.connections.add(reply);
     this.connectedAt.set(reply, Date.now());
+    sseConnectionsGauge.inc();
     logger.debug(
       {
         event: "sse_client_added",
@@ -27,6 +33,8 @@ class ConnectionManager {
     const start = this.connectedAt.get(reply) || Date.now();
     this.connectedAt.delete(reply);
     const durationMs = Date.now() - start;
+    sseConnectionsGauge.dec();
+    sseConnectionDurationHistogram.observe(durationMs / 1000);
     logger.debug(
       {
         event: "sse_client_removed",
@@ -60,6 +68,8 @@ class ConnectionManager {
         this.removeClient(reply);
       }
     }
+    // Increment events counter (connection or observation etc.)
+    sseEventsSentCounter.inc({ event_type: eventType }, success);
     logger.debug(
       {
         event: "sse_broadcast",
@@ -74,6 +84,12 @@ class ConnectionManager {
 
   getConnectionCount(): number {
     return this.connections.size;
+  }
+
+  getConnectionDuration(reply: FastifyReply): number {
+    const start = this.connectedAt.get(reply);
+    if (!start) return 0;
+    return Date.now() - start;
   }
 }
 

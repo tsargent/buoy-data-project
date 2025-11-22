@@ -2,12 +2,22 @@ import { getSubscriber } from "./redis.js";
 import { connectionManager } from "./sse-manager.js";
 import { logger } from "./logger.js";
 import { ObservationEventSchema, ObservationEvent } from "@pkg/shared";
+import {
+  sseBroadcastLatencyHistogram,
+  sseBroadcastErrorsCounter,
+} from "./metrics.js";
 
 // Deprecated aliases retained for transition (remove after downstream updates)
 export const ObservationMessageSchema = ObservationEventSchema;
 export type ObservationMessage = ObservationEvent;
 
 const REDIS_CHANNEL = "observations:new";
+// In-memory loop latency samples for profiling (dev/debug only)
+const loopLatencySamples: number[] = [];
+
+export function getLoopLatencySamples(limit = 200): number[] {
+  return loopLatencySamples.slice(-limit);
+}
 
 /**
  * Initialize the Redis subscriber for observation events.
@@ -66,28 +76,43 @@ export async function initializeSubscriber(): Promise<void> {
           },
           "Invalid observation message received"
         );
+        sseBroadcastErrorsCounter.inc({ reason: "schema_invalid" });
         return;
       }
 
       const observation = validationResult.data;
 
       // Broadcast to all SSE clients
+      const preCount = connectionManager.getConnectionCount();
       const clientCount = connectionManager.broadcastToAll(
         "observation",
         observation
       );
 
       const latency = Date.now() - startTime;
+      // Record latency sample (keep bounded memory)
+      loopLatencySamples.push(latency);
+      if (loopLatencySamples.length > 1000) {
+        loopLatencySamples.splice(0, loopLatencySamples.length - 1000);
+      }
+      sseBroadcastLatencyHistogram.observe(latency);
       logger.debug(
         {
           event: "observation_broadcasted",
           channel: REDIS_CHANNEL,
           stationId: observation.stationId,
           clientCount,
+          attemptedClients: preCount,
           latencyMs: latency,
         },
         "Observation broadcast to SSE clients"
       );
+
+      // If some clients failed writes
+      const failedWrites = preCount - clientCount;
+      if (failedWrites > 0) {
+        sseBroadcastErrorsCounter.inc({ reason: "write_failed" }, failedWrites);
+      }
 
       // Log warning if latency exceeds target
       if (latency > 200) {
@@ -111,6 +136,7 @@ export async function initializeSubscriber(): Promise<void> {
           },
           "Failed to parse Redis message JSON"
         );
+        sseBroadcastErrorsCounter.inc({ reason: "json_parse" });
       } else {
         logger.error(
           {
@@ -120,6 +146,7 @@ export async function initializeSubscriber(): Promise<void> {
           },
           "Error processing Redis message"
         );
+        sseBroadcastErrorsCounter.inc({ reason: "json_parse" });
       }
     }
   });

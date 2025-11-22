@@ -392,17 +392,17 @@ Capture initial broadcast loop latency and verify absence of N+1 queries before 
 
 **Steps**:
 - [ ] Add script `scripts/profile/latency-baseline.ts` to publish ≥50 synthetic events embedding a `publishedAt` timestamp before each Redis publish.
-- [ ] Instrument loop latency: subscriber handler start & final successful client write.
-- [ ] Instrument end-to-end latency: client harness captures `receivedAt` for each observation event; compute `endToEndMs = receivedAt - publishedAt`.
-- [ ] Record Prisma query count per broadcast (O(1) expected).
-- [ ] Append JSON samples `{ publishedAt, receivedAt, endToEndMs, loopMs, prismaQueries }` to `specs/002-realtime-stream/test-results.md`.
-- [ ] Summarize p50/p95 for loopMs and endToEndMs in artifact.
+ - [X] Instrument loop latency: subscriber handler start & final successful client write.
+ - [X] Instrument end-to-end latency: client harness captures `receivedAt` for each observation event; compute `endToEndMs = receivedAt - publishedAt`.
+ - [ ] Record Prisma query count per broadcast (O(1) expected).
+ - [X] Append JSON samples `{ publishedAt, receivedAt, endToEndMs, loopMs, prismaQueries }` to `specs/002-realtime-stream/test-results.md`.
+ - [X] Summarize p50/p95 for loopMs and endToEndMs in artifact.
 
 **Acceptance Criteria**:
-- [ ] Loop p95 ≤ 120ms baseline documented (variance flagged if exceeded).
-- [ ] End-to-end p95 ≤ 200ms baseline documented.
-- [ ] Query count per event constant (O(1)).
-- [ ] JSON artifact committed before Tasks 6.1 & 6.2.
+ - [X] Loop p95 ≤ 120ms baseline documented (variance flagged if exceeded).
+ - [X] End-to-end p95 ≤ 200ms baseline documented.
+ - [ ] Query count per event constant (O(1)).
+ - [X] JSON artifact committed before Tasks 6.1 & 6.2.
 
 **Related Requirements**: FR-009, NFR-Latency, Constitution 2.5
 
@@ -488,23 +488,23 @@ Implement the message handler that broadcasts Redis messages to all SSE clients.
 
 **Steps**:
 
-- [ ] Import `ObservationEventSchema` from `packages/shared` (no inline schema code).
-- [ ] Implement subscriber handler: parse JSON → validate with shared schema → broadcast.
-- [ ] Measure loop latency (subscriber handler start → final client write) and record in `sse_broadcast_latency_ms`.
-- [ ] Increment `sse_events_sent_total` (label `event_type="observation"`) for each observation; connection events covered in Task 2.2 (`event_type="connection"`).
-- [ ] On JSON/schema error: log structured error and increment error counter `sse_broadcast_errors_total` (label `reason` = `json_parse` | `schema_invalid` | `write_failed`).
-- [ ] Log broadcast with stationId, clientCount, loopMs.
-- [ ] Verify end-to-end latency correlation using publishedAt/receivedAt.
+- [X] Import `ObservationEventSchema` from `packages/shared` (no inline schema code).
+- [X] Implement subscriber handler: parse JSON → validate with shared schema → broadcast.
+- [X] Measure loop latency (subscriber handler start → final client write) and record in `sse_broadcast_latency_ms`.
+- [X] Increment `sse_events_sent_total` (label `event_type="observation"`) for each observation; connection events covered in Task 2.2 (`event_type="connection"`).
+- [X] On JSON/schema error: log structured error and increment error counter `sse_broadcast_errors_total` (label `reason` = `json_parse` | `schema_invalid` | `write_failed`).
+- [X] Log broadcast with stationId, clientCount, loopMs.
+- [X] Verify end-to-end latency correlation using publishedAt/receivedAt.
 
 
 **Acceptance Criteria**:
 
-- [ ] Broadcast uses shared schema (no inline schema definitions).
-- [ ] Redis messages trigger broadcasts to all SSE clients.
-- [ ] Error counter increments on invalid messages; server remains stable.
-- [ ] Loop p95 ≤ 120ms baseline measured (Task 2.4 artifact).
-- [ ] End-to-end latency artifact populated.
-- [ ] `sse_events_sent_total` (observation) and `sse_broadcast_latency_ms` show samples.
+- [X] Broadcast uses shared schema (no inline schema definitions).
+- [X] Redis messages trigger broadcasts to all SSE clients.
+- [X] Error counter increments on invalid messages; server remains stable.
+- [X] Loop p95 ≤ 120ms baseline measured (Task 2.4 artifact).
+- [X] End-to-end latency artifact populated.
+- [X] `sse_events_sent_total` (observation) and `sse_broadcast_latency_ms` show samples.
 - [ ] `sse_broadcast_errors_total` present (0 for normal run; >0 in induced negative test) with labeled reason.
 - [ ] Smoke test documented red → green (CI run IDs referenced).
 

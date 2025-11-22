@@ -14,6 +14,7 @@ import { observationsQueriedCounter } from "../../lib/metrics.js";
 import type { Observation } from "@prisma/client";
 import { connectionManager } from "../../lib/sse-manager.js";
 import { isSubscriberConnected } from "../../lib/redis.js";
+import { getLoopLatencySamples } from "../../lib/redis-subscriber.js";
 
 const plugin: FastifyPluginAsync = async (app) => {
   /**
@@ -98,6 +99,22 @@ const plugin: FastifyPluginAsync = async (app) => {
     });
 
     // Keep connection open (don't call reply.send())
+  });
+
+  // Debug endpoint: loop latency samples (development only)
+  app.get("/v1/debug/sse-loop-latencies", async (request, reply) => {
+    if (process.env.NODE_ENV === "production") {
+      return reply
+        .code(404)
+        .send({
+          error: {
+            code: "INVALID_REQUEST",
+            message: "Not available in production",
+          },
+        });
+    }
+    const samples = getLoopLatencySamples();
+    return { samples, count: samples.length };
   });
 
   app.get<{

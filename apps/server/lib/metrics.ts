@@ -80,3 +80,17 @@ export const sseBroadcastLatencyHistogram = new Histogram({
   buckets: [1, 5, 10, 25, 50, 100, 250, 500],
   registers: [register],
 });
+
+export const sseBroadcastErrorsCounter = new Counter({
+  name: "sse_broadcast_errors_total",
+  help: "Total number of broadcast errors",
+  labelNames: ["reason"], // json_parse | schema_invalid | write_failed
+  registers: [register],
+});
+
+export const sseReconnectLatencyHistogram = new Histogram({
+  name: "sse_reconnect_latency_seconds",
+  help: "Latency between disconnect and next connection event",
+  buckets: [0.5, 1, 2, 3, 5, 8],
+  registers: [register],
+});
