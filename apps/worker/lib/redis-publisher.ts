@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import { env } from "../src/env.js";
 import { logger } from "./logger.js";
-import { ObservationEvent } from "@pkg/shared";
+import { ObservationEvent, ObservationEventSchema } from "@pkg/shared";
 
 /**
  * Redis publisher for observation events.
@@ -98,6 +98,24 @@ export async function publishObservation(
   observation: ObservationEvent
 ): Promise<void> {
   const publisher = getPublisher();
+  // Validate against shared schema (type-centric contract enforcement)
+  // If validation fails, log and abort publish without retries.
+  try {
+    ObservationEventSchema.parse(observation);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logger.error(
+      {
+        event: "publish_validation_failed",
+        channel: REDIS_CHANNEL,
+        stationId: observation.stationId,
+        error: errorMsg,
+      },
+      "Observation schema validation failed; skipping publish"
+    );
+    return; // Do not attempt publish retries for invalid payload
+  }
+
   const message = JSON.stringify(observation);
 
   let lastError: Error | null = null;
