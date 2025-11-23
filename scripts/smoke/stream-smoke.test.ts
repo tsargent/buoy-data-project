@@ -16,6 +16,7 @@ async function publishTestObservation(redisUrl: string) {
   const payload = {
     stationId: "smoke-station",
     timestamp: new Date().toISOString(),
+    publishedAt: new Date().toISOString(), // ensure latency field present for end-to-end measurement readiness
     waveHeightM: 1.2,
     windSpeedMps: 3.4,
     windDirDeg: 180,
@@ -42,10 +43,10 @@ describe("Stream Smoke Test (pre-implementation gating)", () => {
     // NOTE: EventSource will attempt connection; without SSE route (Task 2.1) it will not succeed.
     const es = new EventSource(streamUrl, { retryInterval: 0 });
 
-    es.addEventListener("connection", (evt) => {
+    es.addEventListener("connection", (evt: MessageEvent) => {
       connectionEventData = evt.data;
     });
-    es.addEventListener("observation", (evt) => {
+    es.addEventListener("observation", (evt: MessageEvent) => {
       observationEventData = evt.data;
     });
     es.onerror = () => {

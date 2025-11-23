@@ -13,8 +13,11 @@ import {
 import { observationsQueriedCounter } from "../../lib/metrics.js";
 import type { Observation } from "@prisma/client";
 import { connectionManager } from "../../lib/sse-manager.js";
-import { isSubscriberConnected } from "../../lib/redis.js";
-import { getLoopLatencySamples } from "../../lib/redis-subscriber.js";
+import { isSubscriberConnected } from "../../lib/redis.js"; // retained for fallback
+import {
+  getLoopLatencySamples,
+  isRedisSubscriberHealthy,
+} from "../../lib/redis-subscriber.js";
 
 const plugin: FastifyPluginAsync = async (app) => {
   /**
@@ -30,8 +33,8 @@ const plugin: FastifyPluginAsync = async (app) => {
    * - 500: Service unavailable (Redis not connected)
    */
   app.get("/stream", async (request, reply) => {
-    // Check if Redis subscriber is connected
-    if (!isSubscriberConnected()) {
+    // Check if Redis subscriber is healthy (preferred) or connected (fallback)
+    if (!isRedisSubscriberHealthy() || !isSubscriberConnected()) {
       const error = createError(
         ErrorCode.SERVICE_UNAVAILABLE,
         "Real-time streaming is temporarily unavailable. Please try again later."
@@ -104,14 +107,12 @@ const plugin: FastifyPluginAsync = async (app) => {
   // Debug endpoint: loop latency samples (development only)
   app.get("/v1/debug/sse-loop-latencies", async (request, reply) => {
     if (process.env.NODE_ENV === "production") {
-      return reply
-        .code(404)
-        .send({
-          error: {
-            code: "INVALID_REQUEST",
-            message: "Not available in production",
-          },
-        });
+      return reply.code(404).send({
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Not available in production",
+        },
+      });
     }
     const samples = getLoopLatencySamples();
     return { samples, count: samples.length };

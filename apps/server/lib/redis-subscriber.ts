@@ -5,7 +5,9 @@ import { ObservationEventSchema, ObservationEvent } from "@pkg/shared";
 import {
   sseBroadcastLatencyHistogram,
   sseBroadcastErrorsCounter,
+  sseReconnectLatencyHistogram,
 } from "./metrics.js";
+import { createError, ErrorCode } from "./errors.js";
 
 // Deprecated aliases retained for transition (remove after downstream updates)
 export const ObservationMessageSchema = ObservationEventSchema;
@@ -14,6 +16,17 @@ export type ObservationMessage = ObservationEvent;
 const REDIS_CHANNEL = "observations:new";
 // In-memory loop latency samples for profiling (dev/debug only)
 const loopLatencySamples: number[] = [];
+
+// Redis subscriber health state
+let redisSubscriberHealthy = false;
+let redisDowntimeStart: number | null = null;
+
+/**
+ * Current Redis subscriber health. True when connection is ready & subscribed.
+ */
+export function isRedisSubscriberHealthy(): boolean {
+  return redisSubscriberHealthy;
+}
 
 export function getLoopLatencySamples(limit = 200): number[] {
   return loopLatencySamples.slice(-limit);
@@ -41,6 +54,9 @@ export async function initializeSubscriber(): Promise<void> {
         },
         "Failed to subscribe to Redis channel"
       );
+      redisSubscriberHealthy = false;
+      if (redisDowntimeStart === null) redisDowntimeStart = Date.now();
+      broadcastServiceUnavailable("Subscription failure");
       return;
     }
     logger.info(
@@ -51,6 +67,7 @@ export async function initializeSubscriber(): Promise<void> {
       },
       "Subscribed to Redis channel"
     );
+    markHealthy();
   });
 
   // Handle incoming messages
@@ -161,6 +178,9 @@ export async function initializeSubscriber(): Promise<void> {
       },
       "Successfully subscribed to Redis channel"
     );
+    if (channel === REDIS_CHANNEL) {
+      markHealthy();
+    }
   });
 
   // Handle errors
@@ -172,6 +192,7 @@ export async function initializeSubscriber(): Promise<void> {
       },
       "Redis subscriber connection error"
     );
+    markUnhealthy("error");
   });
 
   // Handle reconnection
@@ -182,6 +203,17 @@ export async function initializeSubscriber(): Promise<void> {
       },
       "Reconnecting to Redis"
     );
+    markUnhealthy("reconnecting");
+  });
+
+  subscriber.on("close", () => {
+    logger.warn(
+      {
+        event: "redis_subscriber_closed",
+      },
+      "Redis subscriber connection closed"
+    );
+    markUnhealthy("closed");
   });
 
   logger.info(
@@ -207,4 +239,55 @@ export async function shutdownSubscriber(): Promise<void> {
     },
     "Unsubscribed from Redis channel"
   );
+}
+
+// ---- Internal helpers ----
+
+function markHealthy(): void {
+  if (!redisSubscriberHealthy) {
+    // If recovering from downtime record reconnect latency
+    if (redisDowntimeStart !== null) {
+      const seconds = (Date.now() - redisDowntimeStart) / 1000;
+      sseReconnectLatencyHistogram.observe(seconds);
+      logger.info(
+        {
+          event: "redis_reconnect_latency_observed",
+          downtimeSeconds: seconds,
+        },
+        "Recorded Redis reconnect latency"
+      );
+    }
+  }
+  redisSubscriberHealthy = true;
+  redisDowntimeStart = null;
+  // Broadcast connection status to SSE clients
+  connectionManager.broadcastToAll("connection", {
+    status: "available",
+    timestamp: new Date().toISOString(),
+  });
+}
+
+function markUnhealthy(reason: string): void {
+  if (!redisSubscriberHealthy) {
+    // Already unhealthy, avoid duplicate broadcasts
+    return;
+  }
+  redisSubscriberHealthy = false;
+  if (redisDowntimeStart === null) redisDowntimeStart = Date.now();
+  logger.warn(
+    {
+      event: "redis_subscriber_unhealthy",
+      reason,
+    },
+    "Redis subscriber marked unhealthy"
+  );
+  broadcastServiceUnavailable(reason);
+}
+
+function broadcastServiceUnavailable(reason: string): void {
+  const errorPayload = createError(
+    ErrorCode.SERVICE_UNAVAILABLE,
+    `Real-time streaming unavailable (${reason}).`
+  );
+  connectionManager.broadcastToAll("error", errorPayload);
 }

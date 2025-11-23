@@ -505,7 +505,7 @@ Implement the message handler that broadcasts Redis messages to all SSE clients.
 - [X] Loop p95 ≤ 120ms baseline measured (Task 2.4 artifact).
 - [X] End-to-end latency artifact populated.
 - [X] `sse_events_sent_total` (observation) and `sse_broadcast_latency_ms` show samples.
-- [ ] `sse_broadcast_errors_total` present (0 for normal run; >0 in induced negative test) with labeled reason.
+ - [X] `sse_broadcast_errors_total` present (induced json_parse & schema_invalid labels) with values >0.
 - [ ] Smoke test documented red → green (CI run IDs referenced).
 
 

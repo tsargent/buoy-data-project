@@ -7,12 +7,13 @@ const ConnectionEventKeys = ["status", "timestamp"] as const;
 const ObservationEventKeys = [
   "stationId",
   "timestamp",
+  "publishedAt",
   "waveHeightM",
   "windSpeedMps",
   "windDirDeg",
   "waterTempC",
   "pressureHpa",
-] as const;
+] as const; // include publishedAt per Task 2.5 latency instrumentation
 const ErrorResponseKeys = ["error"] as const;
 const ErrorInnerKeys = ["code", "message"] as const;
 
