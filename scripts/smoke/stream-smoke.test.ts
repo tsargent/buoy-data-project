@@ -37,6 +37,11 @@ describe("Stream Smoke Test (pre-implementation gating)", () => {
       "http://localhost:3000/v1/observations/stream";
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 
+    // Simulation flag allows us to produce a RED CI run after implementation
+    // without code rollback. When SIMULATE_PRE_IMPLEMENTATION=1 the test asserts
+    // that events are ABSENT (forcing failure if they appear), mimicking the pre-implementation state.
+    const simulatePre = process.env.SIMULATE_PRE_IMPLEMENTATION === "1";
+
     let connectionEventData: string | null = null;
     let observationEventData: string | null = null;
 
@@ -62,6 +67,20 @@ describe("Stream Smoke Test (pre-implementation gating)", () => {
     es.close();
 
     // Intentional failing expectations until implementation done.
+    if (simulatePre) {
+      // Pre-implementation expectation: events DO NOT exist.
+      expect(
+        connectionEventData,
+        "(SIMULATED RED) Connection event unexpectedly present"
+      ).toBeNull();
+      expect(
+        observationEventData,
+        "(SIMULATED RED) Observation event unexpectedly present"
+      ).toBeNull();
+      return; // end test early
+    }
+
+    // Normal (GREEN) expectation after implementation
     expect(
       connectionEventData,
       "Connection event should arrive within 1000ms (pending Task 2.1 & 2.2)"

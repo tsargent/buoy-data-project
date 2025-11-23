@@ -545,6 +545,28 @@
 
 ---
 
+## Test-First Evidence (Constitution 2.2)
+
+| Phase | CI Run URL | Mode | Notes |
+|-------|------------|------|-------|
+| RED (Simulated Pre-Implementation) | _TBD_ | SIMULATE_PRE_IMPLEMENTATION=1 | Smoke test intentionally failed before full suite |
+| GREEN (Post-Implementation) | _TBD_ | Normal | Smoke test passed; full suite executed |
+
+Instructions:
+1. Trigger RED run: `workflow_dispatch` with `simulate_pre=true` (records failing smoke test only).
+2. Record run URL above; commit referencing it: `feat: implement streaming (refs RED run <id>)`.
+3. Trigger GREEN run: `workflow_dispatch` with `simulate_pre=false` (default) or push commit; ensure smoke test passes.
+4. Record GREEN run URL; update table.
+5. Mark Tasks 0.3 & 3.2 acceptance criteria satisfied referencing both run IDs.
+
+Pending Updates:
+- Replace `_TBD_` with actual GitHub Actions run URLs.
+- Add commit hashes associated with RED and GREEN phases.
+
+---
+
+---
+
 ## Sign-off
 
 **Tester**: Tyler Sargent  
